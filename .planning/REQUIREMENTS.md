@@ -16,7 +16,7 @@
 
 - [ ] **GEN-01**: Generator produces a reproducible puzzle from an integer seed — same seed always yields the same puzzle regardless of environment
 - [ ] **GEN-02**: Generator computes and stores a hash of the fully-rendered puzzle at creation; replaying the same seed asserts the same hash (reproducibility proof)
-- [ ] **GEN-03**: Generator exposes configurable difficulty parameters that control puzzle complexity (e.g. alphabet range, state-change rate, cross-char mixing depth)
+- [x] **GEN-03**: Generator exposes configurable difficulty parameters that control puzzle complexity (e.g. alphabet range, state-change rate, cross-char mixing depth)
 - [x] **GEN-04**: All generator sub-functions accept an explicit `rng: random.Random` parameter — no global `random.seed()` calls anywhere in the generation path
 
 ### Session & CLI
@@ -77,7 +77,7 @@
 | GEN-04 | Phase 1 | Complete |
 | GEN-01 | Phase 2 | Pending |
 | GEN-02 | Phase 2 | Pending |
-| GEN-03 | Phase 2 | Pending |
+| GEN-03 | Phase 2 | Complete |
 | SESS-01 | Phase 3 | Pending |
 | SESS-02 | Phase 3 | Pending |
 | SESS-04 | Phase 3 | Pending |

@@ -41,7 +41,22 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Running the generator twice with the same seed yields identical puzzles in any environment (reproducibility holds across process restarts)
   2. Replaying the same seed asserts the same stored hash — a mutated seed produces a hash mismatch error
   3. Configuring different difficulty parameters (alphabet range, state-change rate, cross-char mixing depth) produces measurably distinct puzzle complexity levels
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+
+**Wave 1**
+- [x] 02-01-PLAN.md — Extend DifficultyConfig (state_change_rate, cross_char_depth) + add apply_cross_char_layer_multi to layers.py
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — Update create_rule_engine and RuleEngine to consume new DifficultyConfig fields (k_list, state_change_rate)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-03-PLAN.md — Create cipherbench/puzzle.py (Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY/MEDIUM/HARD) + test suite
+
+**Cross-cutting constraints:**
+- All 47 Phase 1 tests must pass at every wave boundary
+- No global `random.seed()` calls anywhere in the generation path (GEN-04 discipline)
 
 ### Phase 3: Session Infrastructure & Model Adapters
 **Goal**: The benchmark is runnable end-to-end with real model API calls — a model session and a human session can both be completed, recorded as JSON, and distinguished by outcome; the adapter layer connects any LiteLLM-supported provider without code changes
@@ -87,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
-| 2. Puzzle Generator | 0/TBD | Not started | - |
+| 2. Puzzle Generator | 1/3 | In Progress|  |
 | 3. Session Infrastructure & Model Adapters | 0/TBD | Not started | - |
 | 4. Scoring & Reporting | 0/TBD | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
