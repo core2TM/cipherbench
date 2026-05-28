@@ -7,8 +7,28 @@ Available:
     DifficultyConfig  — frozen dataclass: alphabet, output_length
     RuleEngine        — stateful oracle; single public method: score_attempt()
     create_rule_engine — factory: create_rule_engine(seed, difficulty) -> RuleEngine
+    Puzzle            — frozen dataclass: seed, difficulty, puzzle_hash
+    generate_puzzle   — factory: generate_puzzle(seed, difficulty) -> Puzzle
+    verify_puzzle     — hash integrity assertion: verify_puzzle(puzzle) -> None
+    get_tier          — tier classifier: get_tier(difficulty) -> str
+    EASY              — DifficultyConfig preset: 10-char alphabet, depth=1, rate=1.0
+    MEDIUM            — DifficultyConfig preset: 26-char alphabet, depth=2, rate=1.5
+    HARD              — DifficultyConfig preset: 36-char alphabet, depth=3, rate=2.0
 """
 from cipherbench.types import AttemptScore, DifficultyConfig
 from cipherbench.engine.rule_engine import RuleEngine, create_rule_engine
+from cipherbench.puzzle import Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY, MEDIUM, HARD
 
-__all__ = ["AttemptScore", "DifficultyConfig", "RuleEngine", "create_rule_engine"]
+__all__ = [
+    "AttemptScore",
+    "DifficultyConfig",
+    "RuleEngine",
+    "create_rule_engine",
+    "Puzzle",
+    "generate_puzzle",
+    "verify_puzzle",
+    "get_tier",
+    "EASY",
+    "MEDIUM",
+    "HARD",
+]
