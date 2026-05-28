@@ -167,6 +167,19 @@ class RuleEngine:
         )
         return apply_cross_char_layer_multi(shifted, self._ground_truth, self._k_list, self._alphabet)
 
+    def _hash_payload(self) -> dict:
+        """Return the minimal derived-state dict for puzzle integrity hashing.
+
+        Intentionally private; only generate_puzzle / verify_puzzle may call this.
+        Centralises the private-attribute coupling inside RuleEngine itself so that
+        puzzle.py never needs to name _base_shifts, _k_list, or _ground_truth directly.
+        """
+        return {
+            "base_shifts": self._base_shifts,
+            "k_list": self._k_list,
+            "ground_truth": self._ground_truth,
+        }
+
     # NO other public methods.  No reset(), no get_key(), no cipher_text property,
     # no __repr__ that leaks cipher state.
 

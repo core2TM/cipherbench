@@ -103,7 +103,8 @@ def generate_puzzle(seed: int, difficulty: DifficultyConfig = None) -> Puzzle:
     if difficulty is None:
         difficulty = DifficultyConfig()
     engine = create_rule_engine(seed, difficulty)
-    puzzle_hash = _compute_hash(engine._base_shifts, engine._k_list, engine._ground_truth)
+    payload = engine._hash_payload()
+    puzzle_hash = _compute_hash(payload["base_shifts"], payload["k_list"], payload["ground_truth"])
     return Puzzle(seed=seed, difficulty=difficulty, puzzle_hash=puzzle_hash)
 
 
@@ -117,7 +118,8 @@ def verify_puzzle(puzzle: Puzzle) -> None:
         Message format: 'hash mismatch: expected {X}, got {Y}'.
     """
     engine = create_rule_engine(puzzle.seed, puzzle.difficulty)
-    expected = _compute_hash(engine._base_shifts, engine._k_list, engine._ground_truth)
+    payload = engine._hash_payload()
+    expected = _compute_hash(payload["base_shifts"], payload["k_list"], payload["ground_truth"])
     if expected != puzzle.puzzle_hash:
         raise ValueError(
             f"hash mismatch: expected {expected}, got {puzzle.puzzle_hash}"
