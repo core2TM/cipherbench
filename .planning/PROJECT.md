@@ -16,6 +16,8 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 - [x] Information boundary enforced: all external interaction via `score_attempt()` only; cipher internals not accessible — Validated in Phase 01: Rule Engine
 - [x] Reproducibility: `create_rule_engine(seed)` produces identical score sequences across independent instances — Validated in Phase 01: Rule Engine
 - [x] RNG discipline: no global `random.seed()` mutation; isolated `random.Random(seed)` per engine — Validated in Phase 01: Rule Engine
+- [x] Procedural puzzle generator: `generate_puzzle(seed)` produces reproducible, hash-verified `Puzzle` objects with configurable difficulty tiers (EASY/MEDIUM/HARD) — Validated in Phase 02: Puzzle Generator
+- [x] Configurable difficulty axes: `state_change_rate` and `cross_char_depth` in `DifficultyConfig`; tier presets produce measurably distinct complexity — Validated in Phase 02: Puzzle Generator
 
 ### Active
 
@@ -55,7 +57,7 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 |----------|-----------|---------|
 | All three enhancements in v1 | User identified each loophole independently; combining them is the point of the benchmark | Implemented (Phase 01) |
 | Layered architecture for rule engine | Composable layers (base cipher + state modifier + cross-char transform + feedback mode) let difficulty axes be tuned independently | Implemented as pure functions in `engine/layers.py` (Phase 01) |
-| Procedural generation over fixed set | Prevents memorization / dataset contamination; unlimited fresh puzzles | — Pending |
+| Procedural generation over fixed set | Prevents memorization / dataset contamination; unlimited fresh puzzles | Implemented: `generate_puzzle(seed)` in `cipherbench/puzzle.py` (Phase 02) |
 | CLI for human baseline (not web UI) | Keeps v1 scope tight; human plays through same interface as model harness | — Pending |
 | Provider-agnostic runner | Researcher wants to test many frontier models; hardcoding one provider would require forking | — Pending |
 
@@ -77,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 — Phase 01 complete (Rule Engine)*
+*Last updated: 2026-05-29 — Phase 02 complete (Puzzle Generator)*
