@@ -44,7 +44,6 @@ from typing import Optional
 from cipherbench.types import AttemptScore, DifficultyConfig
 from cipherbench.engine.layers import (
     apply_state_layer,
-    apply_cross_char_layer,
     apply_cross_char_layer_multi,
     count_correct,
 )
