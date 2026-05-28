@@ -6,6 +6,7 @@ gets a fresh, isolated instance (prevents state bleed — PITFALLS.md C-3).
 """
 import pytest
 from cipherbench.types import DifficultyConfig
+from cipherbench.engine.rule_engine import create_rule_engine
 
 
 @pytest.fixture
@@ -18,17 +19,15 @@ def default_difficulty() -> DifficultyConfig:
 def rule_engine_seed_42(default_difficulty: DifficultyConfig):
     """Fresh RuleEngine for seed 42 — the canonical test seed.
 
-    Stub: RuleEngine is not yet implemented. Available after Plan 03.
-    Tests using this fixture are skipped until then.
+    Function-scoped (default): each test gets an isolated instance with _round=1.
     """
-    pytest.skip("RuleEngine not implemented yet — available in Plan 03")
+    return create_rule_engine(seed=42, difficulty=default_difficulty)
 
 
 @pytest.fixture
 def rule_engine_seed_0(default_difficulty: DifficultyConfig):
     """Fresh RuleEngine for seed 0 — boundary/edge case seed.
 
-    Stub: RuleEngine is not yet implemented. Available after Plan 03.
-    Tests using this fixture are skipped until then.
+    Function-scoped (default): each test gets an isolated instance with _round=1.
     """
-    pytest.skip("RuleEngine not implemented yet — available in Plan 03")
+    return create_rule_engine(seed=0, difficulty=default_difficulty)
