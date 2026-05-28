@@ -22,12 +22,14 @@ def apply_state_layer(
     base_shifts: list,
     round_num: int,
     alphabet: str,
+    state_change_rate: float = 1.0,
 ) -> list:
     """Apply round-number multiplier to base shifts and shift each plaintext character.
 
     Implements RULE-01 and D-07.  The effective shift for each position is
-    ``base_shift * round_num`` (linear multiplier), ensuring a different encoded
-    output every round even for the same probe string.
+    ``int(base_shift * round_num * state_change_rate)`` (linear multiplier with
+    rate scaling), ensuring a different encoded output every round even for the
+    same probe string.
 
     Parameters
     ----------
@@ -39,6 +41,11 @@ def apply_state_layer(
         Current round number (1-indexed).  Multiplied with each base shift.
     alphabet : str
         Character set in use (D-05).  All arithmetic is modulo ``len(alphabet)``.
+    state_change_rate : float, optional
+        Multiplier that scales how aggressively effective shifts grow with each
+        round. Default 1.0 preserves Phase 1 behavior exactly. Values > 1.0
+        increase shift magnitude; values < 1.0 (but > 0) decrease it.
+        Uses ``int()`` truncation (floor-toward-zero) for deterministic results.
 
     Returns
     -------
@@ -47,7 +54,7 @@ def apply_state_layer(
         Returns indices (not characters) so that ``apply_cross_char_layer``
         can take them directly as input without a second index lookup.
     """
-    effective_shifts = [s * round_num for s in base_shifts]
+    effective_shifts = [int(s * round_num * state_change_rate) for s in base_shifts]
     indices = [alphabet.index(c) for c in plaintext]
     return [(idx + eff) % len(alphabet) for idx, eff in zip(indices, effective_shifts)]
 
@@ -101,6 +108,63 @@ def apply_cross_char_layer(
         extra_offset = alphabet.index(plaintext[source_pos])
         new_idx = (shifted_indices[j] + extra_offset) % len(alphabet)
         result.append(alphabet[new_idx])
+    return "".join(result)
+
+
+def apply_cross_char_layer_multi(
+    shifted_indices: list,
+    plaintext: str,
+    k_list: list,
+    alphabet: str,
+) -> str:
+    """Apply multiple cross-character offset distances in sequence (D-03).
+
+    Extends ``apply_cross_char_layer`` to support configurable depth: rather than
+    a single ``k`` value, this function accepts a list of k values (``k_list``) and
+    accumulates the cross-character offsets additively for each.
+
+    For each output position ``j``, start with ``base = shifted_indices[j]``, then
+    for each ``k`` in ``k_list``:
+
+        source_pos = (j - k) % n
+        extra_offset = alphabet.index(plaintext[source_pos])
+        base = (base + extra_offset) % len(alphabet)
+
+    Return ``alphabet[base]`` for each position joined into the output string.
+
+    **Depth-1 equivalence guarantee:** When ``k_list`` has exactly one element (i.e.
+    ``k_list = [k]``), this function produces identical output to
+    ``apply_cross_char_layer(shifted_indices, plaintext, k, alphabet)``.
+
+    Parameters
+    ----------
+    shifted_indices : list[int]
+        Output of ``apply_state_layer`` — integer indices in ``0..len(alphabet)-1``.
+    plaintext : str
+        The original probe string (same as passed to ``apply_state_layer``).
+        Used to derive the cross-character extra offsets at each depth level.
+    k_list : list[int]
+        List of cross-character offset distances applied in sequence.
+        ``len(k_list)`` is the depth of cross-character mixing.
+        Depth=1 (single k) is identical to ``apply_cross_char_layer``.
+        Depth=2+ stacks multiple offsets for stronger positional mixing.
+    alphabet : str
+        Character set in use (D-05).  All arithmetic is modulo ``len(alphabet)``.
+
+    Returns
+    -------
+    str
+        Encoded output string of the same length as ``shifted_indices``.
+    """
+    n = len(shifted_indices)
+    result = []
+    for j in range(n):
+        base = shifted_indices[j]
+        for k in k_list:
+            source_pos = (j - k) % n
+            extra_offset = alphabet.index(plaintext[source_pos])
+            base = (base + extra_offset) % len(alphabet)
+        result.append(alphabet[base])
     return "".join(result)
 
 
