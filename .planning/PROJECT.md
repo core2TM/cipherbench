@@ -12,7 +12,10 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Rule engine with three composable layers: State (history-dependent rules), Cross-Character Interdependence (positional mixing), and Hidden Feedback (score-only output) — Validated in Phase 01: Rule Engine
+- [x] Information boundary enforced: all external interaction via `score_attempt()` only; cipher internals not accessible — Validated in Phase 01: Rule Engine
+- [x] Reproducibility: `create_rule_engine(seed)` produces identical score sequences across independent instances — Validated in Phase 01: Rule Engine
+- [x] RNG discipline: no global `random.seed()` mutation; isolated `random.Random(seed)` per engine — Validated in Phase 01: Rule Engine
 
 ### Active
 
@@ -50,8 +53,8 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| All three enhancements in v1 | User identified each loophole independently; combining them is the point of the benchmark | — Pending |
-| Layered architecture for rule engine | Composable layers (base cipher + state modifier + cross-char transform + feedback mode) let difficulty axes be tuned independently | — Pending |
+| All three enhancements in v1 | User identified each loophole independently; combining them is the point of the benchmark | Implemented (Phase 01) |
+| Layered architecture for rule engine | Composable layers (base cipher + state modifier + cross-char transform + feedback mode) let difficulty axes be tuned independently | Implemented as pure functions in `engine/layers.py` (Phase 01) |
 | Procedural generation over fixed set | Prevents memorization / dataset contamination; unlimited fresh puzzles | — Pending |
 | CLI for human baseline (not web UI) | Keeps v1 scope tight; human plays through same interface as model harness | — Pending |
 | Provider-agnostic runner | Researcher wants to test many frontier models; hardcoding one provider would require forking | — Pending |
@@ -74,4 +77,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-28 after initialization*
+*Last updated: 2026-05-28 — Phase 01 complete (Rule Engine)*
