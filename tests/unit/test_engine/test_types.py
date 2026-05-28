@@ -85,3 +85,59 @@ def test_attempt_score_no_ciphertext_field():
     assert not hasattr(s, "ciphertext"), "AttemptScore must not have a 'ciphertext' field"
     assert not hasattr(s, "key"), "AttemptScore must not have a 'key' field"
     assert not hasattr(s, "shifts"), "AttemptScore must not have a 'shifts' field"
+
+
+# --- DifficultyConfig: state_change_rate tests (D-02) ---
+
+def test_difficulty_config_state_change_rate_default():
+    """DifficultyConfig().state_change_rate defaults to 1.0 (D-02)."""
+    assert DifficultyConfig().state_change_rate == 1.0
+
+
+def test_difficulty_config_state_change_rate_custom():
+    """DifficultyConfig(state_change_rate=2.0) stores the custom value."""
+    assert DifficultyConfig(state_change_rate=2.0).state_change_rate == 2.0
+
+
+def test_difficulty_config_state_change_rate_invalid_zero():
+    """state_change_rate=0.0 must raise ValueError (must be positive)."""
+    with pytest.raises(ValueError):
+        DifficultyConfig(state_change_rate=0.0)
+
+
+def test_difficulty_config_state_change_rate_invalid_negative():
+    """state_change_rate=-0.5 must raise ValueError (must be positive)."""
+    with pytest.raises(ValueError):
+        DifficultyConfig(state_change_rate=-0.5)
+
+
+# --- DifficultyConfig: cross_char_depth tests (D-03) ---
+
+def test_difficulty_config_cross_char_depth_default():
+    """DifficultyConfig().cross_char_depth defaults to 1 (D-03)."""
+    assert DifficultyConfig().cross_char_depth == 1
+
+
+def test_difficulty_config_cross_char_depth_max_valid():
+    """cross_char_depth=4 with output_length=5 is valid (4 == output_length - 1)."""
+    d = DifficultyConfig(cross_char_depth=4, output_length=5)
+    assert d.cross_char_depth == 4
+
+
+def test_difficulty_config_cross_char_depth_exceeds_max():
+    """cross_char_depth=5 with output_length=5 raises ValueError (max is output_length-1=4)."""
+    with pytest.raises(ValueError):
+        DifficultyConfig(cross_char_depth=5, output_length=5)
+
+
+def test_difficulty_config_cross_char_depth_zero():
+    """cross_char_depth=0 raises ValueError (minimum is 1)."""
+    with pytest.raises(ValueError):
+        DifficultyConfig(cross_char_depth=0)
+
+
+def test_difficulty_config_defaults_backward_compat():
+    """DifficultyConfig() still has alphabet=A-Z and output_length=5 (existing behavior unchanged)."""
+    d = DifficultyConfig()
+    assert d.alphabet == "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    assert d.output_length == 5
