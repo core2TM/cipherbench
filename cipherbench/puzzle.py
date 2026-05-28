@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import Optional
 
 from cipherbench.types import DifficultyConfig
 from cipherbench.engine.rule_engine import RuleEngine, create_rule_engine
@@ -81,7 +82,7 @@ def _compute_hash(base_shifts: list, k_list: list, ground_truth: str) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def generate_puzzle(seed: int, difficulty: DifficultyConfig = None) -> Puzzle:
+def generate_puzzle(seed: int, difficulty: Optional[DifficultyConfig] = None) -> Puzzle:
     """Construct a Puzzle from a seed and difficulty configuration (GEN-01, GEN-02).
 
     This is the ONLY authorized way to construct a Puzzle (D-06).

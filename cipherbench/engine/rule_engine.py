@@ -39,6 +39,7 @@ Private attribute convention (D-09, ASVS V4 note from RESEARCH.md):
 from __future__ import annotations
 
 import random
+from typing import Optional
 
 from cipherbench.types import AttemptScore, DifficultyConfig
 from cipherbench.engine.layers import (
@@ -184,7 +185,7 @@ class RuleEngine:
     # no __repr__ that leaks cipher state.
 
 
-def create_rule_engine(seed: int, difficulty: DifficultyConfig = None) -> RuleEngine:
+def create_rule_engine(seed: int, difficulty: Optional[DifficultyConfig] = None) -> RuleEngine:
     """Construct a fresh RuleEngine for a given seed and difficulty (D-10, D-11).
 
     This is the ONLY authorized way to construct a RuleEngine.  Calling RuleEngine(...)
