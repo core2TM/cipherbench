@@ -9,13 +9,16 @@ Design decisions implemented here:
   D-10  Factory pattern — create_rule_engine constructs a fresh instance every call.
   D-11  Explicit rng threading — random.Random(seed) created once in the factory and
         used for all random calls; never the global random module's seed() function.
-  D-07  Round-number multiplier applied via apply_state_layer (linear: base * round).
-  D-04  Cross-character offset injection applied via apply_cross_char_layer (pull model).
+  D-07  Round-number multiplier applied via apply_state_layer (linear: base * round * rate).
+  D-02  state_change_rate stored as _state_change_rate; passed to apply_state_layer each round.
+  D-03  Cross-character offset injection applied via apply_cross_char_layer_multi (_k_list).
+  D-04  Pull model for cross-character offset injection.
   D-01  Aggregate-only score — count_correct returns an integer count, no positions.
 
 Information boundary (RULE-04):
   score_attempt(guess) is the ONLY public method on RuleEngine.
-  All cipher state (_base_shifts, _k, _alphabet, _ground_truth, _round) is private.
+  All cipher state (_base_shifts, _k_list, _state_change_rate, _alphabet, _ground_truth,
+  _round) is private.
   The encoded ciphertext computed per round is never stored as an attribute — it is a
   local variable used only for score comparison, then discarded.
 
@@ -26,7 +29,7 @@ Ground truth (PATTERNS.md Open Question 1, RESOLVED):
   changes each round; the underlying reference string does not.
 
 Private attribute convention (D-09, ASVS V4 note from RESEARCH.md):
-  Single-underscore convention (_base_shifts, _k, …) is used rather than double-
+  Single-underscore convention (_base_shifts, _k_list, …) is used rather than double-
   underscore name-mangling (__base_shifts) by deliberate choice.  Name-mangling does not
   prevent access (Python renames to _RuleEngine__base_shifts, still accessible) and
   degrades debuggability in a research tool where stepping through private state is
@@ -38,7 +41,12 @@ from __future__ import annotations
 import random
 
 from cipherbench.types import AttemptScore, DifficultyConfig
-from cipherbench.engine.layers import apply_state_layer, apply_cross_char_layer, count_correct
+from cipherbench.engine.layers import (
+    apply_state_layer,
+    apply_cross_char_layer,
+    apply_cross_char_layer_multi,
+    count_correct,
+)
 
 
 class RuleEngine:
@@ -49,6 +57,14 @@ class RuleEngine:
     debuggability outweighs mechanical barrier.  Security enforcement is via the
     information boundary test suite, not name-mangling.
 
+    Private attributes:
+      _base_shifts       : list[int] — per-position base shift values
+      _k_list            : list[int] — cross-character offset distances (D-03)
+      _state_change_rate : float     — round multiplier scaling factor (D-02)
+      _alphabet          : str       — character set in use
+      _ground_truth      : str       — fixed reference string for encoding
+      _round             : int       — current round counter (starts at 1)
+
     Never construct this class directly.  Use create_rule_engine(seed, difficulty)
     to obtain a fresh, properly seeded instance (D-10).
     """
@@ -56,15 +72,16 @@ class RuleEngine:
     def __init__(
         self,
         base_shifts: list,
-        k: int,
+        k_list: list,
         difficulty: DifficultyConfig,
         ground_truth: str,
     ) -> None:
-        self._base_shifts = base_shifts       # private — D-09
-        self._k = k                           # private — D-09
-        self._alphabet = difficulty.alphabet  # private — D-09
-        self._ground_truth = ground_truth     # private — D-09
-        self._round = 1                       # private mutable state (starts at 1)
+        self._base_shifts = base_shifts                       # private — D-09
+        self._k_list = k_list                                 # private — D-09 (D-03)
+        self._state_change_rate = difficulty.state_change_rate  # private — D-09 (D-02)
+        self._alphabet = difficulty.alphabet                  # private — D-09
+        self._ground_truth = ground_truth                     # private — D-09
+        self._round = 1                                       # private mutable state (starts at 1)
 
     def score_attempt(self, guess: str) -> AttemptScore:
         """Validate the guess, encode the ground truth for the current round, return score.
@@ -142,9 +159,13 @@ class RuleEngine:
             Encoded output string of length equal to output_length.
         """
         shifted = apply_state_layer(
-            self._ground_truth, self._base_shifts, round_num, self._alphabet
+            self._ground_truth,
+            self._base_shifts,
+            round_num,
+            self._alphabet,
+            self._state_change_rate,
         )
-        return apply_cross_char_layer(shifted, self._ground_truth, self._k, self._alphabet)
+        return apply_cross_char_layer_multi(shifted, self._ground_truth, self._k_list, self._alphabet)
 
     # NO other public methods.  No reset(), no get_key(), no cipher_text property,
     # no __repr__ that leaks cipher state.
@@ -166,9 +187,12 @@ def create_rule_engine(seed: int, difficulty: DifficultyConfig = None) -> RuleEn
     Parameters
     ----------
     seed : int
-        Puzzle seed.  Same seed produces identical base_shifts, k, and score sequences.
+        Puzzle seed.  Same seed + difficulty produces identical base_shifts, k_list,
+        and score sequences.
     difficulty : DifficultyConfig, optional
         Difficulty configuration.  Defaults to DifficultyConfig() (A-Z, length 5).
+        ``difficulty.cross_char_depth`` determines how many k values are sampled (D-03).
+        ``difficulty.state_change_rate`` is stored on the engine for round scaling (D-02).
 
     Returns
     -------
@@ -188,9 +212,12 @@ def create_rule_engine(seed: int, difficulty: DifficultyConfig = None) -> RuleEn
     # ensuring the round multiplier never produces a trivial zero-shift puzzle.
     base_shifts = [rng.randint(1, len(alphabet) - 1) for _ in range(n)]
 
-    # Generate cross-char offset k in [1, n-1] to guarantee non-trivial mixing.
-    # k=0 would mean no cross-char effect (violates RULE-02 intent).
-    k = rng.randint(1, n - 1)
+    # Generate k_list: cross-char offset distances in [1, n-1] (D-03).
+    # rng.sample(range(1, n), 1) is call-count-equivalent to rng.randint(1, n-1)
+    # for depth=1, verified across 1000 seeds (RESEARCH.md Pattern 3 / Assumption A1).
+    # DifficultyConfig.__post_init__ ensures cross_char_depth <= n-1, preventing
+    # "Sample larger than population" ValueError (T-02-02-B mitigation).
+    k_list = rng.sample(range(1, n), difficulty.cross_char_depth)
 
     # Ground truth: fixed reference string ("AAAAA" for output_length=5).
     # PATTERNS.md Open Question 1 resolved: _ground_truth is constant across rounds;
@@ -201,7 +228,7 @@ def create_rule_engine(seed: int, difficulty: DifficultyConfig = None) -> RuleEn
 
     return RuleEngine(
         base_shifts=base_shifts,
-        k=k,
+        k_list=k_list,
         difficulty=difficulty,
         ground_truth=ground_truth,
     )
