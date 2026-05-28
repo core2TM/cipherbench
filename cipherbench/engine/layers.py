@@ -54,6 +54,10 @@ def apply_state_layer(
         Returns indices (not characters) so that ``apply_cross_char_layer``
         can take them directly as input without a second index lookup.
     """
+    if len(plaintext) != len(base_shifts):
+        raise ValueError(
+            f"plaintext length {len(plaintext)} != base_shifts length {len(base_shifts)}"
+        )
     effective_shifts = [int(s * round_num * state_change_rate) for s in base_shifts]
     indices = [alphabet.index(c) for c in plaintext]
     return [(idx + eff) % len(alphabet) for idx, eff in zip(indices, effective_shifts)]
@@ -189,4 +193,8 @@ def count_correct(guess: str, ciphertext: str) -> int:
     int
         Number of correctly placed characters (0..len(guess)).
     """
+    if len(guess) != len(ciphertext):
+        raise ValueError(
+            f"guess length {len(guess)} != ciphertext length {len(ciphertext)}"
+        )
     return sum(g == c for g, c in zip(guess, ciphertext))
