@@ -7,17 +7,17 @@
 
 ### Rule Engine
 
-- [ ] **RULE-01**: System applies a state layer so that submitting the same probe string in a different round produces a different encoded output (history-dependent rules)
-- [ ] **RULE-02**: System applies a cross-character interdependence layer so that the shift applied to one output character depends on the value of a different input character (positional mixing defeats position-symmetric attacks)
-- [ ] **RULE-03**: System applies a hidden feedback layer that returns only a correctness score (e.g. number of correctly-placed characters) — the actual encoded output is never revealed mid-session
-- [ ] **RULE-04**: Rule engine exposes only `score_attempt(guess) -> AttemptScore` to the rest of the system — cipher key and ground-truth ciphertext are never accessible from outside the engine boundary
+- [x] **RULE-01**: System applies a state layer so that submitting the same probe string in a different round produces a different encoded output (history-dependent rules)
+- [x] **RULE-02**: System applies a cross-character interdependence layer so that the shift applied to one output character depends on the value of a different input character (positional mixing defeats position-symmetric attacks)
+- [x] **RULE-03**: System applies a hidden feedback layer that returns only a correctness score (e.g. number of correctly-placed characters) — the actual encoded output is never revealed mid-session
+- [x] **RULE-04**: Rule engine exposes only `score_attempt(guess) -> AttemptScore` to the rest of the system — cipher key and ground-truth ciphertext are never accessible from outside the engine boundary
 
 ### Puzzle Generation
 
 - [ ] **GEN-01**: Generator produces a reproducible puzzle from an integer seed — same seed always yields the same puzzle regardless of environment
 - [ ] **GEN-02**: Generator computes and stores a hash of the fully-rendered puzzle at creation; replaying the same seed asserts the same hash (reproducibility proof)
 - [ ] **GEN-03**: Generator exposes configurable difficulty parameters that control puzzle complexity (e.g. alphabet range, state-change rate, cross-char mixing depth)
-- [ ] **GEN-04**: All generator sub-functions accept an explicit `rng: random.Random` parameter — no global `random.seed()` calls anywhere in the generation path
+- [x] **GEN-04**: All generator sub-functions accept an explicit `rng: random.Random` parameter — no global `random.seed()` calls anywhere in the generation path
 
 ### Session & CLI
 
@@ -70,11 +70,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RULE-01 | Phase 1 | Pending |
-| RULE-02 | Phase 1 | Pending |
-| RULE-03 | Phase 1 | Pending |
-| RULE-04 | Phase 1 | Pending |
-| GEN-04 | Phase 1 | Pending |
+| RULE-01 | Phase 1 | Complete |
+| RULE-02 | Phase 1 | Complete |
+| RULE-03 | Phase 1 | Complete |
+| RULE-04 | Phase 1 | Complete |
+| GEN-04 | Phase 1 | Complete |
 | GEN-01 | Phase 2 | Pending |
 | GEN-02 | Phase 2 | Pending |
 | GEN-03 | Phase 2 | Pending |
