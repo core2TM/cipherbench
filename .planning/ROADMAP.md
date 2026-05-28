@@ -13,7 +13,7 @@ CipherBench is built from the inside out: the rule engine (the core mechanic) is
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Rule Engine** - Implement the three-layer cipher rule engine with enforced information boundary (completed 2026-05-28)
-- [ ] **Phase 2: Puzzle Generator** - Build reproducible, seeded puzzle generation with configurable difficulty
+- [x] **Phase 2: Puzzle Generator** - Build reproducible, seeded puzzle generation with configurable difficulty (completed 2026-05-28)
 - [ ] **Phase 3: Session Infrastructure & Model Adapters** - Make the benchmark runnable end-to-end with real model API calls
 - [ ] **Phase 4: Scoring & Reporting** - Compute success rate, efficiency, AGI proximity, and difficulty breakdowns
 - [ ] **Phase 5: Session Inspector** - Add CLI replay and inspection of stored session traces
@@ -52,7 +52,7 @@ Plans:
 - [x] 02-02-PLAN.md — Update create_rule_engine and RuleEngine to consume new DifficultyConfig fields (k_list, state_change_rate)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 02-03-PLAN.md — Create cipherbench/puzzle.py (Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY/MEDIUM/HARD) + test suite
+- [x] 02-03-PLAN.md — Create cipherbench/puzzle.py (Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY/MEDIUM/HARD) + test suite
 
 **Cross-cutting constraints:**
 - All 47 Phase 1 tests must pass at every wave boundary
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
-| 2. Puzzle Generator | 2/3 | In Progress|  |
+| 2. Puzzle Generator | 3/3 | Complete   | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 0/TBD | Not started | - |
 | 4. Scoring & Reporting | 0/TBD | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
