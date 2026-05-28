@@ -24,16 +24,34 @@ class DifficultyConfig:
     output_length : int
         Number of characters in both the probe and the encoded output. Default: 5 (D-06).
         Fixed at 5 across all puzzles in v1; the 5-attempt limit maps to this length.
+    state_change_rate : float
+        Multiplier applied to the state layer shift formula. Default: 1.0 (D-02).
+        Controls how aggressively the effective shift grows with each round.
+        Must be strictly positive (> 0.0); zero or negative values are meaningless.
+    cross_char_depth : int
+        Number of cross-character offset distances applied in sequence. Default: 1 (D-03).
+        Depth=1 uses a single k value (identical to Phase 1 behavior).
+        Depth=2+ stacks multiple k values for stronger positional mixing.
+        Must be in [1, output_length-1]; depth >= output_length would prevent valid sampling.
     """
 
     alphabet: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     output_length: int = 5
+    state_change_rate: float = 1.0
+    cross_char_depth: int = 1
 
     def __post_init__(self) -> None:
         if len(self.alphabet) < 2:
             raise ValueError("alphabet must have at least 2 characters")
         if self.output_length < 1:
             raise ValueError("output_length must be positive")
+        if self.state_change_rate <= 0.0:
+            raise ValueError("state_change_rate must be positive")
+        if not (1 <= self.cross_char_depth <= self.output_length - 1):
+            raise ValueError(
+                f"cross_char_depth must be in [1, output_length-1={self.output_length - 1}],"
+                f" got {self.cross_char_depth}"
+            )
 
 
 @dataclass(frozen=True)
