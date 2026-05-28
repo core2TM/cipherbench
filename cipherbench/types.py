@@ -43,8 +43,11 @@ class DifficultyConfig:
     def __post_init__(self) -> None:
         if len(self.alphabet) < 2:
             raise ValueError("alphabet must have at least 2 characters")
-        if self.output_length < 1:
-            raise ValueError("output_length must be positive")
+        if self.output_length < 2:
+            raise ValueError(
+                "output_length must be at least 2 "
+                "(output_length=1 leaves no valid cross_char_depth)"
+            )
         if self.state_change_rate <= 0.0:
             raise ValueError("state_change_rate must be positive")
         if not (1 <= self.cross_char_depth <= self.output_length - 1):
