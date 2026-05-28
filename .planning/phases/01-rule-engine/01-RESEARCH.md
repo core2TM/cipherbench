@@ -531,22 +531,22 @@ def test_fifty_sequential_runs_are_deterministic():
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Ground truth definition: what exactly does `score_attempt` compare against?**
    - What we know: D-03 says "final answer evaluation is exact match only (binary)"; D-09 says `_ground_truth` is private; RULE-03 says "actual encoded output is never revealed"
    - What's unclear: Is `_ground_truth` a fixed string derived at construction time (the "answer key"), or is it computed per-round as `encode(reference_string, round_num)`? The CONTEXT.md examples suggest round-dependent targets (`AAA → BCD` at round 1, `BBB → DFH` at round 2), which implies the target itself changes each round.
-   - Recommendation: Implementer should trace the example: what does a model submit as its final answer? If it submits a decoded plaintext, the ground truth is the original plaintext (constant). If it submits the expected ciphertext for a given input, the target changes per round. Resolve before writing `_encode_for_round`.
+   - RESOLVED: `_ground_truth` is a fixed reference string (`"A" * output_length`, e.g. `"AAAAA"`) set at construction time. `score_attempt` compares the guess against the per-round encoding of that fixed reference via `_encode_for_round(self._ground_truth, round_num)`. The target ciphertext changes each round; the underlying reference string does not.
 
 2. **Linear vs. non-linear round multiplier**
    - What we know: D-07 specifies "round N multiplies the base shift" and must be deterministic. Claude's Discretion explicitly leaves the polynomial form to the implementer.
    - What's unclear: Linear multiplier (`base * round`) causes shifts to grow unbounded for large rounds. Since all arithmetic is mod 26, this wraps around — but very large round numbers (round 26, 52, etc.) may produce the same encoding as round 1, creating a periodicity vulnerability. Quadratic or prime-step multiplier avoids this.
-   - Recommendation: Use linear (`base_shift * round_number`) as the default per D-07's canonical example (`AAA → BCD` at round 1, `BBB → DFH` at round 2). Document the periodicity at round=26 as a known property, not a bug.
+   - RESOLVED: Linear multiplier (`base_shift * round_num`) is used per D-07's canonical example. Periodicity at round=26 is a documented known property, not a bug — the 5-attempt limit makes it unreachable in normal play.
 
 3. **Minimum entropy validation (from CONTEXT.md specifics)**
    - What we know: The brute-force resistance analysis (conducted in this research) shows ~10.6-bit deficit between what 5 aggregate-scored attempts can extract vs. the key space. The state evolution layer makes Mastermind-optimal strategies inapplicable.
    - What's unclear: CONTEXT.md asks for "a quick mathematical analysis or simulation to validate that the chosen design achieves [brute-force resistance] before finalizing the implementation."
-   - Recommendation: Include a plan task to write a small simulation: given the worst-case adversarial strategy (optimal Mastermind for aggregate-score Mastermind), how many sessions must the adversary run to identify the key? This is an empirical validation of the math, not a blocker for implementation.
+   - RESOLVED: The analytical proof in the Summary section (~10.6-bit deficit confirmed, state evolution invalidates Mastermind-optimal strategies) is accepted as sufficient validation. The CONTEXT.md simulation suggestion is waived — the math is rigorous and independently verifiable. No simulation task is required.
 
 ---
 
