@@ -11,7 +11,7 @@ Canonical regression tests from CONTEXT.md D-07:
 """
 
 import pytest
-from cipherbench.engine.layers import apply_state_layer, apply_cross_char_layer, count_correct
+from cipherbench.engine.layers import apply_state_layer, apply_cross_char_layer, count_correct, apply_cross_char_layer_multi
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -164,3 +164,88 @@ def test_count_correct_returns_int():
     """Return type must be int."""
     result = count_correct("ABCDE", "ABCDE")
     assert isinstance(result, int)
+
+
+# ---------------------------------------------------------------------------
+# apply_state_layer with state_change_rate tests (D-02)
+# ---------------------------------------------------------------------------
+
+
+def test_state_layer_rate_default_unchanged():
+    """Explicit rate=1.0 produces the same result as no rate argument (backward compat)."""
+    no_rate = apply_state_layer("AAA", [1, 2, 3], 1, ALPHABET)
+    with_rate = apply_state_layer("AAA", [1, 2, 3], 1, ALPHABET, 1.0)
+    assert no_rate == with_rate
+
+
+def test_state_layer_rate_changes_shifts():
+    """state_change_rate=1.5 produces different effective shifts than rate=1.0.
+
+    With base_shifts=[2,4], round_num=1:
+      rate=1.0: effective = [int(2*1*1.0), int(4*1*1.0)] = [2, 4]
+      rate=1.5: effective = [int(2*1*1.5), int(4*1*1.5)] = [3, 6]
+    """
+    result_1_0 = apply_state_layer("AA", [2, 4], 1, ALPHABET, state_change_rate=1.0)
+    result_1_5 = apply_state_layer("AA", [2, 4], 1, ALPHABET, state_change_rate=1.5)
+    assert result_1_0 != result_1_5
+
+
+def test_state_layer_rate_2_doubles_shifts():
+    """state_change_rate=2.0 with round_num=2: effective shift = int(1*2*2.0) = 4.
+
+    A=0, base_shifts=[1], round_num=2, rate=2.0:
+      effective = int(1*2*2.0) = 4, result = (0+4) % 26 = 4
+    """
+    result = apply_state_layer("A", [1], 2, ALPHABET, state_change_rate=2.0)
+    assert result == [4]
+
+
+# ---------------------------------------------------------------------------
+# apply_cross_char_layer_multi tests (D-03)
+# ---------------------------------------------------------------------------
+
+
+def test_multi_depth1_matches_single():
+    """apply_cross_char_layer_multi with k_list=[1] matches apply_cross_char_layer(k=1).
+
+    With shifted=[0,0,0], plaintext="ABC", k=1:
+      pull model: output[0] ← plaintext[(0-1) mod 3]=plaintext[2]=C(2), (0+2)%26=2 → C
+                  output[1] ← plaintext[(1-1) mod 3]=plaintext[0]=A(0), (0+0)%26=0 → A
+                  output[2] ← plaintext[(2-1) mod 3]=plaintext[1]=B(1), (0+1)%26=1 → B
+    Expected: "CAB"
+    """
+    result_multi = apply_cross_char_layer_multi([0, 0, 0], "ABC", [1], ALPHABET)
+    result_single = apply_cross_char_layer([0, 0, 0], "ABC", 1, ALPHABET)
+    assert result_multi == result_single == "CAB"
+
+
+def test_multi_depth2_differs_depth1():
+    """apply_cross_char_layer_multi with k_list=[1,2] produces different output than k_list=[1]."""
+    result_depth1 = apply_cross_char_layer_multi([0, 0, 0, 0, 0], "ABCDE", [1], ALPHABET)
+    result_depth2 = apply_cross_char_layer_multi([0, 0, 0, 0, 0], "ABCDE", [1, 2], ALPHABET)
+    assert result_depth1 != result_depth2
+
+
+def test_multi_accumulates_additively():
+    """Manually verify depth=2 additive accumulation for k_list=[1,2] on 3-char input.
+
+    shifted=[0,0,0], plaintext="ABC", k_list=[1,2], alphabet=ALPHABET
+    For j=0:
+      base = 0
+      k=1: source_pos=(0-1)%3=2, extra=alphabet.index('C')=2, base=(0+2)%26=2
+      k=2: source_pos=(0-2)%3=1, extra=alphabet.index('B')=1, base=(2+1)%26=3
+      result[0] = ALPHABET[3] = 'D'
+    For j=1:
+      base = 0
+      k=1: source_pos=(1-1)%3=0, extra=alphabet.index('A')=0, base=(0+0)%26=0
+      k=2: source_pos=(1-2)%3=2, extra=alphabet.index('C')=2, base=(0+2)%26=2
+      result[1] = ALPHABET[2] = 'C'
+    For j=2:
+      base = 0
+      k=1: source_pos=(2-1)%3=1, extra=alphabet.index('B')=1, base=(0+1)%26=1
+      k=2: source_pos=(2-2)%3=0, extra=alphabet.index('A')=0, base=(1+0)%26=1
+      result[2] = ALPHABET[1] = 'B'
+    Expected: "DCB"
+    """
+    result = apply_cross_char_layer_multi([0, 0, 0], "ABC", [1, 2], ALPHABET)
+    assert result == "DCB"
