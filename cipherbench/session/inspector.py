@@ -1,6 +1,7 @@
 """CipherBench session inspector — display a recorded session trace in the terminal.
 
 Public names:
+  InspectorError   — raised by inspect_session on unrecoverable errors
   inspect_session  — locate a session by ID (substring/case-insensitive) and display it
   display_session  — render a single session dict as Rich Panel + Table
 
@@ -22,10 +23,15 @@ import json
 from pathlib import Path
 
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
 _console = Console()
+
+
+class InspectorError(RuntimeError):
+    """Raised by inspect_session on unrecoverable errors (not-found, ambiguous, I/O)."""
 
 
 def inspect_session(
@@ -36,13 +42,19 @@ def inspect_session(
     """Locate a session by ID and display it to the terminal (SESS-03).
 
     Resolves *session_id* by case-insensitive substring match against JSON
-    filename stems in *sessions_dir*.  Exits with code 1 on error (not found,
-    ambiguous, missing dir, empty dir, malformed JSON).
+    filename stems in *sessions_dir*.  Raises :exc:`InspectorError` on error
+    (not found, ambiguous, missing dir, empty dir, malformed JSON) so that
+    library callers can recover via ``except InspectorError``.
+
+    The CLI layer (``inspect_command`` in ``app.py``) converts
+    :exc:`InspectorError` to ``typer.Exit(code=1)`` so end-user behaviour is
+    unchanged.
 
     Parameters
     ----------
     session_id : str
-        Full or partial session identifier to look up.
+        Full or partial session identifier to look up.  Must be a non-empty,
+        non-whitespace-only string.
     sessions_dir : Path
         Directory containing ``*.json`` session files.
     console : Console | None
@@ -51,21 +63,28 @@ def inspect_session(
     if console is None:
         console = _console
 
+    # Guard: reject empty / whitespace-only session_id (CR-02)
+    if not session_id or not session_id.strip():
+        msg = "session_id must be a non-empty string."
+        console.print(f"Error: {msg}", style="red")
+        raise InspectorError(msg)
+
     # D-09: sessions directory missing
     if not sessions_dir.exists():
-        console.print(
+        msg = (
             f"Sessions directory not found: {sessions_dir}\n"
-            "Run 'cipherbench run' or 'cipherbench play' to record sessions first.",
-            style="red",
+            "Run 'cipherbench run' or 'cipherbench play' to record sessions first."
         )
-        raise SystemExit(1)
+        console.print(msg, style="red")
+        raise InspectorError(msg)
 
     all_paths = list(sessions_dir.glob("*.json"))
 
     # D-10: sessions directory empty
     if not all_paths:
-        console.print(f"No sessions found in: {sessions_dir}", style="red")
-        raise SystemExit(1)
+        msg = f"No sessions found in: {sessions_dir}"
+        console.print(msg, style="red")
+        raise InspectorError(msg)
 
     matches = [p for p in all_paths if session_id.lower() in p.stem.lower()]
     all_stems = sorted(p.stem for p in all_paths)
@@ -75,7 +94,7 @@ def inspect_session(
         console.print(f"Session not found: '{session_id}'", style="red")
         for stem in all_stems:
             console.print(f"  {stem}")
-        raise SystemExit(1)
+        raise InspectorError(f"Session not found: '{session_id}'")
 
     # D-02: ambiguous (2+ matches) — list matching stems
     if len(matches) > 1:
@@ -85,7 +104,9 @@ def inspect_session(
         )
         for p in sorted(matches, key=lambda p: p.stem):
             console.print(f"  {p.stem}")
-        raise SystemExit(1)
+        raise InspectorError(
+            f"Ambiguous: matched {len(matches)} sessions for '{session_id}'"
+        )
 
     # Exactly 1 match — load and display
     path = matches[0]
@@ -93,8 +114,9 @@ def inspect_session(
         with path.open() as f:
             session = json.load(f)
     except (json.JSONDecodeError, OSError) as exc:
-        console.print(f"Error reading session file: {exc}", style="red")
-        raise SystemExit(1)
+        msg = f"Error reading session file: {exc}"
+        console.print(msg, style="red")
+        raise InspectorError(msg) from exc
 
     display_session(session, console)
 
@@ -116,14 +138,15 @@ def display_session(session: dict, console: Console) -> None:
       D-06  Footer: "Final answer: <ans> — ✓/✗ Outcome" or "Final answer: — (not reached)"
     """
     # D-03: Panel header — unified runner label (no branching on runner_type)
-    runner = session.get("runner_type", "unknown")
-    runner_label = session.get("model") or session.get("player_name") or "—"
+    # WR-01: escape all user-controlled values to prevent Rich markup injection
+    runner = escape(str(session.get("runner_type", "unknown")))
+    runner_label = escape(str(session.get("model") or session.get("player_name") or "—"))
     body = (
-        f"Session ID : {session.get('session_id', '—')}\n"
+        f"Session ID : {escape(str(session.get('session_id', '—')))}\n"
         f"Runner     : {runner} ({runner_label})\n"
-        f"Seed       : {session.get('seed', '—')}  |  "
-        f"Difficulty : {session.get('difficulty', '—')}\n"
-        f"Outcome    : {session.get('outcome', '—')}"
+        f"Seed       : {escape(str(session.get('seed', '—')))}  |  "
+        f"Difficulty : {escape(str(session.get('difficulty', '—')))}\n"
+        f"Outcome    : {escape(str(session.get('outcome', '—')))}"
     )
     console.print(Panel(body, title="[bold]CipherBench Session Inspector[/bold]"))
 
@@ -155,7 +178,7 @@ def display_session(session: dict, console: Console) -> None:
             is_correct = entry.get("is_correct", False)
             table.add_row(
                 str(entry.get("attempt_num", "?")),
-                entry.get("probe") or "—",
+                escape(entry.get("probe") or "—"),
                 score_str,
                 "✓" if is_correct else "✗",
                 style="green" if is_correct else None,

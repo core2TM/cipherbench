@@ -200,11 +200,15 @@ def inspect_command(
     sessions_dir: Annotated[str, typer.Option("--sessions-dir", help="Directory to read session files from")] = "./sessions",
 ) -> None:
     """Replay a stored session trace, displaying all probe attempts and final outcome (SESS-03)."""
-    from cipherbench.session.inspector import inspect_session
+    from cipherbench.session.inspector import inspect_session, InspectorError
     from rich.console import Console
 
     resolved = Path(sessions_dir).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
-    inspect_session(session_id, resolved, Console())
+    try:
+        inspect_session(session_id, resolved, Console())
+    except InspectorError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
