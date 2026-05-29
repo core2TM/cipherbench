@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Puzzle Generator** - Build reproducible, seeded puzzle generation with configurable difficulty (completed 2026-05-28)
 - [x] **Phase 3: Session Infrastructure & Model Adapters** - Make the benchmark runnable end-to-end with real model API calls (completed 2026-05-29)
 - [x] **Phase 4: Scoring & Reporting** - Compute success rate, efficiency, AGI proximity, and difficulty breakdowns (completed 2026-05-29)
-- [ ] **Phase 5: Session Inspector** - Add CLI replay and inspection of stored session traces
+- [x] **Phase 5: Session Inspector** - Add CLI replay and inspection of stored session traces (completed 2026-05-29)
 
 ## Phase Details
 
@@ -141,7 +141,7 @@ Plans:
 - [x] 05-01-PLAN.md — inspector.py module stub (inspect_session + display_session signatures, _console) + test_inspector.py with all 12 SESS-03 test stubs (skipped)
 
 **Wave 1** *(blocked on Wave 0 completion)*
-- [ ] 05-02-PLAN.md — Full inspector.py implementation (D-01 through D-10) + inspect_command in app.py (D-07) + inspect_session export in __init__.py + all 12 tests green
+- [x] 05-02-PLAN.md — Full inspector.py implementation (D-01 through D-10) + inspect_command in app.py (D-07) + inspect_session export in __init__.py + all 12 tests green
 
 **Cross-cutting constraints:**
 - No business logic in cli/app.py — all lookup and display logic in cipherbench/session/inspector.py
@@ -160,4 +160,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
 | 4. Scoring & Reporting | 4/4 | Complete    | 2026-05-29 |
-| 5. Session Inspector | 1/2 | In Progress|  |
+| 5. Session Inspector | 2/2 | Complete   | 2026-05-29 |
