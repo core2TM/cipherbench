@@ -103,22 +103,49 @@ def _capture_display_session(session: dict, monkeypatch) -> str:
 
 def test_display_session_shows_all_attempts(monkeypatch):
     """SESS-03-A: display_session renders all attempt rows in the table (D-03)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session = _make_session("failure", attempts_used=3)
+    output = _capture_display_session(session, monkeypatch)
+    # Table title is present
+    assert "Attempt Trace" in output
+    # All 3 attempt numbers appear
+    assert "1" in output
+    assert "2" in output
+    assert "3" in output
+    # Column headers
+    assert "Attempt" in output
+    assert "Probe" in output
+    assert "Score" in output
+    assert "Correct?" in output
 
 
 def test_display_extraction_failure_row(monkeypatch):
     """SESS-03-B: extraction-failure attempts render as [extraction failed] with score — (D-04)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session = _make_session("failure", attempts_used=1, extraction_failures=1)
+    output = _capture_display_session(session, monkeypatch)
+    # D-05: extraction failure row markers
+    assert "(extraction failed)" in output
+    # em-dash for score
+    assert "—" in output
 
 
 def test_display_footer_success(monkeypatch):
     """SESS-03-C: footer shows outcome=success and final_answer when session succeeded (D-05)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session = _make_session("success", attempts_used=2, final_answer="AAAAA")
+    output = _capture_display_session(session, monkeypatch)
+    # D-06: footer with final_answer and outcome
+    assert "Final answer" in output
+    assert "AAAAA" in output
+    assert "Success" in output
+    assert "✓" in output
 
 
 def test_display_footer_not_reached(monkeypatch):
     """SESS-03-D: footer shows 'Final answer not reached' when final_answer is None (D-06)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session = _make_session("failure", attempts_used=2, final_answer=None)
+    output = _capture_display_session(session, monkeypatch)
+    # D-06: not reached path
+    assert "Final answer" in output
+    assert "(not reached)" in output
 
 
 def test_inspect_substring_match(tmp_sessions_dir):
