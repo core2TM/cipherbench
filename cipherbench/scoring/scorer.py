@@ -82,7 +82,7 @@ def load_sessions(
     sessions = []
     for path in sessions_dir.glob("*.json"):
         try:
-            with path.open() as f:
+            with path.open(encoding="utf-8") as f:  # WR-01: explicit UTF-8 for cross-platform compat
                 data = json.load(f)
         except (json.JSONDecodeError, OSError):
             # Pitfall 2 / T-04-01: skip malformed or unreadable files silently

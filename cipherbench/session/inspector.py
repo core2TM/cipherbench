@@ -111,7 +111,7 @@ def inspect_session(
     # Exactly 1 match — load and display
     path = matches[0]
     try:
-        with path.open() as f:
+        with path.open(encoding="utf-8") as f:  # WR-01: explicit UTF-8 for cross-platform compat
             session = json.load(f)
     except (json.JSONDecodeError, OSError) as exc:
         msg = f"Error reading session file: {exc}"
