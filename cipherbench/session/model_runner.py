@@ -56,12 +56,21 @@ class ModelSessionRunner:
       _session_record : dict        — the mutable session state; mutated in-place by run()
     """
 
-    def __init__(self, puzzle, engine, adapter, writer: SessionWriter, session_record: dict) -> None:
+    def __init__(
+        self,
+        puzzle,
+        engine,
+        adapter,
+        writer: SessionWriter,
+        session_record: dict,
+        valid_attempts_start: int = 0,
+    ) -> None:
         self._puzzle = puzzle
         self._engine = engine
         self._adapter = adapter
         self._writer = writer
         self._session_record = session_record
+        self._valid_attempts_start = valid_attempts_start  # CR-02: restored budget for resume
 
     def run(self) -> dict:
         """Execute the probe-attempt loop and return the final session record dict.
@@ -91,7 +100,7 @@ class ModelSessionRunner:
             logger.warning("Token budget check failed — continuing session")
 
         messages: list[dict] = [{"role": "system", "content": system_prompt}]
-        valid_attempts: int = 0
+        valid_attempts: int = self._valid_attempts_start  # CR-02: start from restored budget
         total_iterations: int = 0
 
         while valid_attempts < MAX_ATTEMPTS and total_iterations < MAX_TOTAL_ITERATIONS:
@@ -218,13 +227,16 @@ def create_model_session(
         puzzle = generate_puzzle(seed, difficulty)
         engine = puzzle.create_engine()
         # Replay engine state to match already-scored attempts
+        already_used = 0
         for attempt in existing["attempts"]:
             if not attempt.get("extraction_failed") and attempt.get("probe"):
                 engine.score_attempt(attempt["probe"])
+                already_used += 1  # CR-02: count valid attempts consumed before rate-limit
         writer = SessionWriter(output_dir, existing["session_id"])
         # Reset outcome to in_progress so the loop continues
         existing["outcome"] = "in_progress"
-        return ModelSessionRunner(puzzle, engine, adapter, writer, existing)
+        return ModelSessionRunner(puzzle, engine, adapter, writer, existing,
+                                  valid_attempts_start=already_used)  # CR-02
 
     puzzle = generate_puzzle(seed, difficulty)
     engine = puzzle.create_engine()
