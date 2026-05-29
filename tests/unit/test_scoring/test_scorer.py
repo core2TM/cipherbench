@@ -142,7 +142,6 @@ def test_compute_report_totals_consistent():
     assert report["totals"]["sessions"] == total_from_tiers
 
 
-@pytest.mark.skip(reason="Wave 2 — CLI not yet wired (Plan 04)")
 def test_score_command_help():
     """CLI: cipherbench score --help exits 0 and shows all flags."""
     from typer.testing import CliRunner
