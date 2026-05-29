@@ -150,39 +150,75 @@ def test_display_footer_not_reached(monkeypatch):
 
 def test_inspect_substring_match(tmp_sessions_dir):
     """SESS-03-E: inspect_session resolves session by partial substring of filename stem (D-01)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session_id = "20260529T143022-alice-test"
+    _write_session(tmp_sessions_dir, session_id, _make_session("success", 2))
+    result = CliRunner().invoke(app, ["inspect", "alice", "--sessions-dir", str(tmp_sessions_dir)])
+    assert result.exit_code == 0
 
 
 def test_inspect_case_insensitive(tmp_sessions_dir):
     """SESS-03-F: inspect_session resolves session case-insensitively (D-01)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    session_id = "20260529T000000-UPPER"
+    _write_session(tmp_sessions_dir, session_id, _make_session("success", 2))
+    result = CliRunner().invoke(app, ["inspect", "upper", "--sessions-dir", str(tmp_sessions_dir)])
+    assert result.exit_code == 0
 
 
 def test_inspect_not_found(tmp_sessions_dir):
     """SESS-03-G: inspect_session exits 1 and lists available sessions when ID not found (D-08)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    _write_session(tmp_sessions_dir, "20260529T000000-test", _make_session("success", 2))
+    result = CliRunner().invoke(app, ["inspect", "zzz-nomatch", "--sessions-dir", str(tmp_sessions_dir)])
+    assert result.exit_code == 1
+    assert "Session not found" in result.output
 
 
 def test_inspect_ambiguous(tmp_sessions_dir):
     """SESS-03-H: inspect_session exits 1 and prints list of matches when ambiguous (D-02)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    _write_session(tmp_sessions_dir, "20260529T000000-shared-a", _make_session("success", 2))
+    _write_session(tmp_sessions_dir, "20260529T000001-shared-b", _make_session("failure", 3))
+    result = CliRunner().invoke(app, ["inspect", "shared", "--sessions-dir", str(tmp_sessions_dir)])
+    assert result.exit_code == 1
+    assert "Ambiguous" in result.output
 
 
 def test_inspect_missing_dir(tmp_sessions_dir):
     """SESS-03-I: inspect_session exits 1 with descriptive error when sessions_dir missing (D-09)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    missing = tmp_sessions_dir / "nonexistent"
+    result = CliRunner().invoke(app, ["inspect", "any", "--sessions-dir", str(missing)])
+    assert result.exit_code == 1
+    assert "Sessions directory not found" in result.output
 
 
 def test_inspect_empty_dir(tmp_sessions_dir):
     """SESS-03-J: inspect_session exits 1 with descriptive error when sessions_dir is empty (D-10)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    tmp_sessions_dir.mkdir(parents=True, exist_ok=True)
+    result = CliRunner().invoke(app, ["inspect", "any", "--sessions-dir", str(tmp_sessions_dir)])
+    assert result.exit_code == 1
+    assert "No sessions found" in result.output
 
 
 def test_inspect_command_help():
     """SESS-03-K: `cipherbench inspect --help` exits 0 and shows session-id argument."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    result = CliRunner().invoke(app, ["inspect", "--help"])
+    assert result.exit_code == 0
+    assert "--sessions-dir" in result.output
 
 
 def test_inspect_schema_parity(monkeypatch):
     """SESS-03-L: display_session renders human sessions identically to model sessions (D-07)."""
-    pytest.skip("Wave 0 stub — implement in Plan 02")
+    model_session = _make_session("success", 2)
+    human_session = dict(
+        _make_session("success", 2),
+        runner_type="human",
+        player_name="Alice",
+        model=None,
+    )
+    model_output = _capture_display_session(model_session, monkeypatch)
+    human_output = _capture_display_session(human_session, monkeypatch)
+    # Both outputs must contain the same column headers
+    for header in ("Attempt", "Probe", "Score", "Correct?"):
+        assert header in model_output, f"Column '{header}' missing from model session output"
+        assert header in human_output, f"Column '{header}' missing from human session output"
+    # Both must show the table title
+    assert "Attempt Trace" in model_output
+    assert "Attempt Trace" in human_output

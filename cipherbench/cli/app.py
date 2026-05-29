@@ -190,6 +190,24 @@ def score_command(
 
 
 # ---------------------------------------------------------------------------
+# `cipherbench inspect` — SESS-03 session replay
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="inspect")
+def inspect_command(
+    session_id: Annotated[str, typer.Argument(help="Session ID or substring to match")],
+    sessions_dir: Annotated[str, typer.Option("--sessions-dir", help="Directory to read session files from")] = "./sessions",
+) -> None:
+    """Replay a stored session trace, displaying all probe attempts and final outcome (SESS-03)."""
+    from cipherbench.session.inspector import inspect_session
+    from rich.console import Console
+
+    resolved = Path(sessions_dir).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
+    inspect_session(session_id, resolved, Console())
+
+
+# ---------------------------------------------------------------------------
 # Entry point guard
 # ---------------------------------------------------------------------------
 

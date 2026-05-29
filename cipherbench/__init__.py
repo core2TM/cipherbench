@@ -17,11 +17,13 @@ Available:
     load_sessions     — load and filter terminal sessions from a directory
     compute_report    — aggregate all metrics into a ScoreReport dict
     ScoreReport       — TypedDict: the structured scoring result
+    inspect_session   — replay a stored session trace to terminal (SESS-03)
 """
 from cipherbench.types import AttemptScore, DifficultyConfig
 from cipherbench.engine.rule_engine import RuleEngine, create_rule_engine
 from cipherbench.puzzle import Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY, MEDIUM, HARD
 from cipherbench.scoring.scorer import load_sessions, compute_report, ScoreReport
+from cipherbench.session.inspector import inspect_session
 
 __all__ = [
     "AttemptScore",
@@ -38,4 +40,5 @@ __all__ = [
     "load_sessions",
     "compute_report",
     "ScoreReport",
+    "inspect_session",
 ]
