@@ -202,11 +202,17 @@ class HumanSessionRunner:
 
             # Input validation loop — re-prompt until valid (D-05)
             raw = typer.prompt(f"Probe {valid_attempts + 1}/{MAX_ATTEMPTS}").strip().upper()
+            # WR-05: strip 'PROBE:' prefix (case-insensitive) so users who follow the
+            # header instructions (PROBE: XXXXX) are not rejected for extra characters.
+            if raw.startswith("PROBE:"):
+                raw = raw[len("PROBE:"):].strip()
             while not _validate_probe(raw, alphabet, output_length):
                 _console.print(
                     f"[red]Invalid: must be {output_length} chars from alphabet '{alphabet}'[/red]"
                 )
                 raw = typer.prompt(f"Probe {valid_attempts + 1}/{MAX_ATTEMPTS}").strip().upper()
+                if raw.startswith("PROBE:"):
+                    raw = raw[len("PROBE:"):].strip()
 
             attempt_score = self._engine.score_attempt(raw)
 
