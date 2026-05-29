@@ -95,9 +95,14 @@ def run_command(
     # D-01, D-03: collect only current-run sessions (not all historical sessions)
     current_run_sessions: list[dict] = []
 
+    # WR-02: derive per-puzzle seeds from root seed to ensure distinct puzzles when
+    # --num-puzzles > 1 and --seed is provided.  random.Random(None) samples the OS
+    # entropy source, preserving the non-seeded randomness contract (D-11, GEN-04).
+    puzzle_rng = random.Random(seed)
+
     for puzzle_idx in range(num_puzzles):
-        # RNG isolation: isolated random.Random() per puzzle (D-11, GEN-04)
-        puzzle_seed = seed if seed is not None else random.Random().randint(0, 2**32 - 1)
+        # RNG isolation: derive per-puzzle seed from puzzle_rng (D-11, GEN-04)
+        puzzle_seed = puzzle_rng.randint(0, 2**32 - 1)
 
         for run_idx in range(runs_per_puzzle):
             adapter = LiteLLMAdapter(model, litellm_config_path=litellm_config)
