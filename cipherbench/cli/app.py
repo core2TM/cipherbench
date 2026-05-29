@@ -7,7 +7,7 @@ Public names:
 
 Design decisions implemented here:
   D-12  `cipherbench run` flags: --model, --seed, --num-puzzles, --runs-per-puzzle,
-        --difficulty, --output-dir, --litellm-config
+        --difficulty, --output-dir, --api-base
   D-13  `cipherbench play` flags: --player-name, --seed, --difficulty, --output-dir
   D-14  API keys from env vars — LiteLLM reads standard provider env vars automatically
   D-15  Rich terminal output delegated entirely to HumanSessionRunner
@@ -79,7 +79,7 @@ def run_command(
     runs_per_puzzle: Annotated[int, typer.Option("--runs-per-puzzle", help="Independent sessions per puzzle")] = 1,
     difficulty: Annotated[Difficulty, typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = Difficulty.medium,
     output_dir: Annotated[str, typer.Option("--output-dir", help="Directory to write session JSON files")] = "./sessions",
-    litellm_config: Annotated[Optional[str], typer.Option("--litellm-config", help="Path to LiteLLM config.yaml")] = None,
+    api_base: Annotated[Optional[str], typer.Option("--api-base", help="Base URL for LiteLLM proxy server, e.g. https://my-proxy.example.com")] = None,
 ) -> None:
     """Run a model benchmark session on a cipher puzzle (SESS-01)."""
     if num_puzzles < 1:
@@ -105,7 +105,7 @@ def run_command(
         puzzle_seed = puzzle_rng.randint(0, 2**32 - 1)
 
         for run_idx in range(runs_per_puzzle):
-            adapter = LiteLLMAdapter(model, litellm_config_path=litellm_config)
+            adapter = LiteLLMAdapter(model, api_base=api_base)
             runner = create_model_session(puzzle_seed, config, adapter, out_path)
             session_record = runner.run()
             current_run_sessions.append(session_record)

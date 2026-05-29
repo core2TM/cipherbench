@@ -47,14 +47,14 @@ class LiteLLMAdapter:
     litellm directly.
 
     Private attributes (single-underscore convention, D-09):
-      _model             : str        — LiteLLM model string (e.g. 'openai/gpt-4o')
-      _litellm_config_path : str | None — path to LiteLLM config.yaml (escape hatch, D-14)
-      _extra_kwargs      : dict       — additional kwargs forwarded to litellm.completion()
+      _model        : str        — LiteLLM model string (e.g. 'openai/gpt-4o')
+      _api_base     : str | None — base URL for proxy routing (WR-04: renamed from litellm_config_path)
+      _extra_kwargs : dict       — additional kwargs forwarded to litellm.completion()
 
     Never instantiate this class without a non-empty model string.
     """
 
-    def __init__(self, model: str, litellm_config_path: str | None = None) -> None:
+    def __init__(self, model: str, api_base: str | None = None) -> None:
         """Initialise the adapter with a LiteLLM model string.
 
         Parameters
@@ -62,9 +62,11 @@ class LiteLLMAdapter:
         model : str
             LiteLLM model string, e.g. 'anthropic/claude-opus-4-7', 'openai/gpt-4o'.
             Must be a non-empty string.
-        litellm_config_path : str | None, optional
-            Path to a LiteLLM config.yaml for advanced proxy routing (D-14 escape hatch).
-            Stored but not deeply integrated in v1; passed as api_base kwarg when provided.
+        api_base : str | None, optional
+            Base URL for a LiteLLM proxy server, e.g. 'https://my-proxy.example.com'.
+            Passed as the ``api_base`` kwarg to litellm.completion() when provided.
+            (WR-04: renamed from ``litellm_config_path`` — a filesystem path is not a
+            valid api_base value; the correct type is a URL string.)
 
         Raises
         ------
@@ -75,13 +77,11 @@ class LiteLLMAdapter:
             raise ValueError("model must be a non-empty string")
 
         self._model: str = model
-        self._litellm_config_path: str | None = litellm_config_path
+        self._api_base: str | None = api_base
         self._extra_kwargs: dict = {}
 
-        # D-14 escape hatch: low-priority in v1 — store path, forward as api_base if set.
-        # This is the minimal integration per the open question in RESEARCH.md.
-        if litellm_config_path is not None:
-            self._extra_kwargs["api_base"] = litellm_config_path
+        if api_base is not None:
+            self._extra_kwargs["api_base"] = api_base
 
     @retry(
         retry=retry_if_exception_type(litellm.RateLimitError),
