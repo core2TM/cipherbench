@@ -59,7 +59,6 @@ def _make_session(
     }
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_success_rate():
     """SCORE-01: correct ratio for mix of success/failure sessions."""
     sessions = [
@@ -71,34 +70,31 @@ def test_success_rate():
     assert success_rate(sessions) == 0.5
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_success_rate_empty():
     """SCORE-01: returns 0.0 for empty list."""
     assert success_rate([]) == 0.0
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_efficiency_score_success():
     """SCORE-02: correct efficiency for success on attempt N."""
     session = _make_session(outcome="success", attempts_used=1)
     assert efficiency_score(session) == 1.0
+    session3 = _make_session(outcome="success", attempts_used=3)
+    assert efficiency_score(session3) == pytest.approx((5 - 3 + 1) / 5)
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_efficiency_score_failure():
     """SCORE-02: efficiency = 0.0 for any failure."""
     session = _make_session(outcome="failure", attempts_used=5)
     assert efficiency_score(session) == 0.0
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_efficiency_extraction_failures_excluded():
     """SCORE-02: D-06 extraction_failed not counted in attempts_used."""
     session = _make_session(outcome="failure", attempts_used=5, extraction_failures=3)
     assert efficiency_score(session) == 0.0
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_agi_proximity_with_baseline():
     """SCORE-03: correct ratio when human baseline present."""
     model_sessions = [_make_session("success", 1)]
@@ -108,14 +104,12 @@ def test_agi_proximity_with_baseline():
     assert result > 0.0
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_agi_proximity_no_baseline():
     """SCORE-03: returns None when no human sessions."""
     model_sessions = [_make_session("success", 1)]
     assert agi_proximity(model_sessions, []) is None
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_agi_proximity_zero_human_avg():
     """SCORE-03: returns None when human_avg == 0.0 (Pitfall 5)."""
     model_sessions = [_make_session("success", 1)]
@@ -123,7 +117,6 @@ def test_agi_proximity_zero_human_avg():
     assert agi_proximity(model_sessions, human_sessions) is None
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_group_by_difficulty():
     """SCORE-04: correct tier buckets."""
     sessions = [
@@ -136,7 +129,6 @@ def test_group_by_difficulty():
     assert len(groups["hard"]) == 1
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_compute_report_totals_consistent():
     """SCORE-01/04: totals match per-difficulty aggregation."""
     sessions = [
@@ -150,7 +142,7 @@ def test_compute_report_totals_consistent():
     assert report["totals"]["sessions"] == total_from_tiers
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
+@pytest.mark.skip(reason="Wave 2 — CLI not yet wired (Plan 04)")
 def test_score_command_help():
     """CLI: cipherbench score --help exits 0 and shows all flags."""
     from typer.testing import CliRunner
@@ -165,7 +157,6 @@ def test_score_command_help():
     assert "--human" in result.output
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_load_sessions_skips_non_terminal(tmp_sessions_dir):
     """D-04: skips in_progress and rate_limited sessions."""
     tmp_sessions_dir.mkdir(parents=True)
@@ -182,14 +173,12 @@ def test_load_sessions_skips_non_terminal(tmp_sessions_dir):
     assert result == []
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_load_sessions_missing_dir(tmp_path):
     """Pitfall 4: returns [] when sessions_dir does not exist."""
     missing = tmp_path / "does_not_exist"
     assert load_sessions(missing, runner_type="model") == []
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 @given(
     outcome=st.sampled_from(["success", "failure"]),
     attempts_used=st.integers(min_value=0, max_value=5),
@@ -201,7 +190,6 @@ def test_efficiency_score_in_range(outcome, attempts_used):
     assert 0.0 <= result <= 1.0
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 1")
 def test_load_sessions_model_exact_match(tmp_sessions_dir):
     """Pitfall 3: exact-match on model string (no slug conversion)."""
     tmp_sessions_dir.mkdir(parents=True)
