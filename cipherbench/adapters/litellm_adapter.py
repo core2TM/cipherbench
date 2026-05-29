@@ -125,7 +125,8 @@ class LiteLLMAdapter:
             messages=messages,
             **self._extra_kwargs,
         )
-        return response.choices[0].message.content
+        content = response.choices[0].message.content
+        return content if content is not None else ""  # CR-03: guard None for empty/tool-use responses
 
     def check_token_budget(self, messages: list[dict]) -> None:
         """Check projected token usage against the model's context window.
