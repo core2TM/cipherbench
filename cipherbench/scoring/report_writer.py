@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -30,4 +29,7 @@ def write_json_report(report: dict, output_file: Path) -> None:
     output_file : Path
         Destination file path. Parent directories are created if needed.
     """
-    raise NotImplementedError
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open("w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
+    logger.info("Score report written to %s", output_file)
