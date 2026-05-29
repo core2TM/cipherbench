@@ -216,8 +216,8 @@ def create_model_session(
     model_str: str = getattr(adapter, "_model", None) or "unknown"
     model_slug = slugify_model(model_str)
 
-    # D-18: auto-detect rate_limited sessions for same model+seed and resume
-    existing = _find_resumable_session(output_dir, model_slug, seed)
+    # D-18: auto-detect rate_limited sessions for same model+seed+difficulty and resume
+    existing = _find_resumable_session(output_dir, model_slug, seed, get_tier(difficulty))
     if existing is not None:
         logger.info(
             "Resuming rate_limited session %s from %d recorded attempt(s)",
@@ -265,12 +265,16 @@ def create_model_session(
 
 
 def _find_resumable_session(
-    output_dir: Path, model_slug: str, seed: int
+    output_dir: Path, model_slug: str, seed: int, difficulty_tier: str
 ) -> Optional[dict]:
-    """Scan *output_dir* for a ``rate_limited`` session matching *model_slug* + *seed*.
+    """Scan *output_dir* for a ``rate_limited`` session matching *model_slug* + *seed* + *difficulty*.
 
     Returns the parsed session dict if found, or ``None`` if no match.
     Silently skips files that cannot be parsed.
+
+    CR-04: difficulty_tier must match to prevent resuming a session from a different
+    difficulty tier, which would replay the prior probes through a different engine
+    (different base_shifts, state_change_rate) and produce inconsistent scores.
     """
     if not output_dir.exists():
         return None
@@ -278,7 +282,11 @@ def _find_resumable_session(
         try:
             with json_file.open(encoding="utf-8") as f:
                 data = json.load(f)
-            if data.get("outcome") == "rate_limited" and data.get("seed") == seed:
+            if (
+                data.get("outcome") == "rate_limited"
+                and data.get("seed") == seed
+                and data.get("difficulty") == difficulty_tier  # CR-04: must match difficulty
+            ):
                 return data
         except (json.JSONDecodeError, OSError):
             continue
