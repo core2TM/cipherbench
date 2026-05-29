@@ -35,10 +35,10 @@
 
 ### Scoring & Reporting
 
-- [ ] **SCORE-01**: Scorer computes success rate (% of sessions where the model produced the correct final answer) across all sessions for a given run config
-- [ ] **SCORE-02**: Scorer computes efficiency score per session: `success × (max_attempts - attempts_used + 1) / max_attempts` — rewards solving in fewer probes; reported alongside raw success rate
-- [ ] **SCORE-03**: Scorer computes an AGI proximity score: model composite score normalized by human baseline composite score for the same puzzle set (requires at least one recorded human baseline)
-- [ ] **SCORE-04**: Reporter breaks down all scores by difficulty tier (easy / medium / hard) derived from puzzle config parameters
+- [x] **SCORE-01**: Scorer computes success rate (% of sessions where the model produced the correct final answer) across all sessions for a given run config
+- [x] **SCORE-02**: Scorer computes efficiency score per session: `success × (max_attempts - attempts_used + 1) / max_attempts` — rewards solving in fewer probes; reported alongside raw success rate
+- [x] **SCORE-03**: Scorer computes an AGI proximity score: model composite score normalized by human baseline composite score for the same puzzle set (requires at least one recorded human baseline)
+- [x] **SCORE-04**: Reporter breaks down all scores by difficulty tier (easy / medium / hard) derived from puzzle config parameters
 
 ## v2 Requirements
 
@@ -85,10 +85,10 @@
 | ADAPT-02 | Phase 3 | Complete |
 | ADAPT-03 | Phase 3 | Complete |
 | ADAPT-04 | Phase 3 | Complete |
-| SCORE-01 | Phase 4 | Pending |
-| SCORE-02 | Phase 4 | Pending |
-| SCORE-03 | Phase 4 | Pending |
-| SCORE-04 | Phase 4 | Pending |
+| SCORE-01 | Phase 4 | Complete |
+| SCORE-02 | Phase 4 | Complete |
+| SCORE-03 | Phase 4 | Complete |
+| SCORE-04 | Phase 4 | Complete |
 | SESS-03 | Phase 5 | Pending |
 
 **Coverage:**

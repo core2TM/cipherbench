@@ -109,7 +109,7 @@ Plans:
 Plans:
 
 **Wave 0**
-- [ ] 04-01-PLAN.md — cipherbench/scoring/ package skeleton (scorer.py, reporter.py, report_writer.py stubs) + all 22 Wave 0 test stubs
+- [x] 04-01-PLAN.md — cipherbench/scoring/ package skeleton (scorer.py, reporter.py, report_writer.py stubs) + all 22 Wave 0 test stubs
 
 **Wave 1** *(blocked on Wave 0 completion)*
 - [ ] 04-02-PLAN.md — Implement scorer.py pure computation: load_sessions, efficiency_score, success_rate, group_by_difficulty, agi_proximity, compute_report (SCORE-01 through SCORE-04)
@@ -145,5 +145,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
-| 4. Scoring & Reporting | 0/4 | Not started | - |
+| 4. Scoring & Reporting | 1/4 | In Progress|  |
 | 5. Session Inspector | 0/TBD | Not started | - |
