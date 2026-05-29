@@ -4,7 +4,11 @@ from __future__ import annotations
 import pytest
 
 # Guard: skip entire module if prompt not yet implemented
-pytest.importorskip("cipherbench.session.prompt")
+prompt_mod = pytest.importorskip("cipherbench.session.prompt")
+build_system_prompt = prompt_mod.build_system_prompt
+build_user_turn = prompt_mod.build_user_turn
+
+ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 # ---------------------------------------------------------------------------
@@ -14,12 +18,17 @@ pytest.importorskip("cipherbench.session.prompt")
 
 def test_system_prompt_contains_probe_format():
     """D-03: System prompt includes the PROBE: XXXXX format instruction."""
-    pytest.fail("not implemented")
+    prompt = build_system_prompt(ALPHABET, 5)
+    assert "PROBE:" in prompt
 
 
 def test_system_prompt_contains_no_strategy_hints():
     """D-03: System prompt must not contain worked examples or strategy hints."""
-    pytest.fail("not implemented")
+    prompt = build_system_prompt(ALPHABET, 5)
+    prompt_lower = prompt.lower()
+    forbidden_words = ["example", "strategy", "hint", "tip", "suggest"]
+    for word in forbidden_words:
+        assert word not in prompt_lower, f"System prompt contains forbidden word: {word!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -29,9 +38,33 @@ def test_system_prompt_contains_no_strategy_hints():
 
 def test_user_turn_contains_attempt_history():
     """D-04: User turn includes a running table of all prior attempts and scores."""
-    pytest.fail("not implemented")
+    attempts = [
+        {
+            "attempt_num": 1,
+            "probe": "ABCDE",
+            "score": 2,
+            "max_score": 5,
+            "is_correct": False,
+        }
+    ]
+    result = build_user_turn(2, attempts, 5)
+    assert "ABCDE" in result
+    assert "2/5" in result
 
 
 def test_user_turn_contains_no_per_position_breakdown():
     """D-04: User turn must not include per-position score breakdown (RULE-03 boundary)."""
-    pytest.fail("not implemented")
+    attempts = [
+        {
+            "attempt_num": 1,
+            "probe": "ABCDE",
+            "score": 2,
+            "max_score": 5,
+            "is_correct": False,
+        }
+    ]
+    result = build_user_turn(2, attempts, 5)
+    result_lower = result.lower()
+    forbidden_phrases = ["position 1", "position 2", "pos 1", "pos 2"]
+    for phrase in forbidden_phrases:
+        assert phrase not in result_lower, f"User turn contains per-position breakdown: {phrase!r}"
