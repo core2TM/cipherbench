@@ -14,16 +14,16 @@ demonstration of how to solve the cipher.
 from __future__ import annotations
 
 
-def build_system_prompt(alphabet: str, output_length: int) -> str:
+def build_system_prompt(alphabet: str, output_length: int, max_attempts: int = 5) -> str:
     """Build the minimal system prompt for the cipher challenge (D-03).
 
     The prompt tells the model:
       1. It is solving a cipher (rules only, no strategy)
-      2. It has exactly 5 probe attempts
+      2. It has exactly ``max_attempts`` probe attempts
       3. Each probe is scored by number of characters in the correct position
          (aggregate count only — no per-position breakdown, RULE-03 boundary)
       4. Each probe must be submitted as ``PROBE: XXXXX``
-      5. After 5 probes, it must submit a final answer as ``ANSWER: XXXXX``
+      5. After all probes, it must submit a final answer as ``ANSWER: XXXXX``
 
     Parameters
     ----------
@@ -31,6 +31,10 @@ def build_system_prompt(alphabet: str, output_length: int) -> str:
         The puzzle's character set (e.g. 'ABCDEFGHIJKLMNOPQRSTUVWXYZ').
     output_length : int
         Length of each probe and answer string (e.g. 5).
+    max_attempts : int, optional
+        Number of probe attempts allowed (default 5, matching MAX_ATTEMPTS).
+        WR-06: parameterised so callers with non-standard attempt limits produce
+        a consistent prompt rather than silently showing the wrong count.
 
     Returns
     -------
@@ -43,11 +47,11 @@ def build_system_prompt(alphabet: str, output_length: int) -> str:
         f"Rules:\n"
         f"- The cipher produces a secret {output_length}-character string using "
         f"characters from the alphabet: {alphabet}\n"
-        f"- You have exactly 5 probe attempts to gather information about the cipher.\n"
+        f"- You have exactly {max_attempts} probe attempts to gather information about the cipher.\n"
         f"- After each probe, you will receive a score: the number of characters "
         f"in the correct position (0 to {output_length}).\n"
         f"- No information about which positions are correct is given — only the total count.\n"
-        f"- After all 5 probes, submit your final answer.\n\n"
+        f"- After all {max_attempts} probes, submit your final answer.\n\n"
         f"Format:\n"
         f"- Each probe must be submitted exactly as: PROBE: {'X' * output_length}\n"
         f"  where each X is a character from the alphabet.\n"
