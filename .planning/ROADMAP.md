@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Rule Engine** - Implement the three-layer cipher rule engine with enforced information boundary (completed 2026-05-28)
 - [x] **Phase 2: Puzzle Generator** - Build reproducible, seeded puzzle generation with configurable difficulty (completed 2026-05-28)
 - [x] **Phase 3: Session Infrastructure & Model Adapters** - Make the benchmark runnable end-to-end with real model API calls (completed 2026-05-29)
-- [ ] **Phase 4: Scoring & Reporting** - Compute success rate, efficiency, AGI proximity, and difficulty breakdowns
+- [x] **Phase 4: Scoring & Reporting** - Compute success rate, efficiency, AGI proximity, and difficulty breakdowns (completed 2026-05-29)
 - [ ] **Phase 5: Session Inspector** - Add CLI replay and inspection of stored session traces
 
 ## Phase Details
@@ -133,7 +133,21 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `cipherbench inspect <session-id>` displays each probe attempt, the score returned for that attempt, and the final answer with pass/fail outcome in the order they occurred
   2. Inspecting a human session and a model session on the same puzzle produces equivalent trace formats — there is no schema divergence between the two session types
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+
+**Wave 0**
+- [ ] 05-01-PLAN.md — inspector.py module stub (inspect_session + display_session signatures, _console) + test_inspector.py with all 12 SESS-03 test stubs (skipped)
+
+**Wave 1** *(blocked on Wave 0 completion)*
+- [ ] 05-02-PLAN.md — Full inspector.py implementation (D-01 through D-10) + inspect_command in app.py (D-07) + inspect_session export in __init__.py + all 12 tests green
+
+**Cross-cutting constraints:**
+- No business logic in cli/app.py — all lookup and display logic in cipherbench/session/inspector.py
+- Session files are read-only — inspector must not write or modify session JSON files
+- Path traversal guard: Path(sessions_dir).resolve() applied in inspect_command before passing to inspector (T-05-01)
+- All prior phase tests must pass at every wave boundary
 
 ## Progress
 
@@ -145,5 +159,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
-| 4. Scoring & Reporting | 3/4 | In Progress|  |
-| 5. Session Inspector | 0/TBD | Not started | - |
+| 4. Scoring & Reporting | 4/4 | Complete    | 2026-05-29 |
+| 5. Session Inspector | 0/2 | Not started | - |
