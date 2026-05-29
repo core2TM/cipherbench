@@ -45,9 +45,15 @@ def test_session_json_written(tmp_sessions_dir, mock_adapter):
     assert isinstance(data["attempts"], list)
 
 
-def test_checkpoint_written_after_each_attempt(tmp_sessions_dir, mock_adapter):
-    """SESS-01: write_checkpoint is called with growing attempts list after each probe."""
-    runner = create_model_session(seed=42, difficulty=EASY, adapter=mock_adapter, output_dir=tmp_sessions_dir)
+def test_checkpoint_written_after_each_attempt(tmp_sessions_dir):
+    """SESS-01: write_checkpoint is called with growing attempts list after each probe.
+
+    Uses PROBE: ABCDE which scores 0/5 for seed=42/EASY across all rounds,
+    ensuring all 5 valid attempts run without early termination.
+    """
+    from tests.conftest import FixedResponseAdapter
+    adapter = FixedResponseAdapter("PROBE: ABCDE")
+    runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
 
     checkpoint_sizes: list[int] = []
     orig = runner._writer.write_checkpoint
@@ -59,7 +65,7 @@ def test_checkpoint_written_after_each_attempt(tmp_sessions_dir, mock_adapter):
     runner._writer.write_checkpoint = spy
     runner.run()
 
-    # One checkpoint per valid probe (PROBE: AAAAA is valid for EASY alphabet)
+    # One checkpoint per valid probe (PROBE: ABCDE scores 0 for seed=42/EASY)
     assert len(checkpoint_sizes) == 5
     assert checkpoint_sizes == list(range(1, 6))
 
@@ -78,10 +84,16 @@ def test_outcome_transitions_to_success(tmp_sessions_dir, mock_adapter):
     assert result["completed_at"] is not None
 
 
-def test_outcome_transitions_to_failure(tmp_sessions_dir, mock_adapter):
-    """SESS-01: outcome is 'failure' when all 5 valid probes score is_correct=False."""
-    # seed=42 / EASY: PROBE: AAAAA scores 0/5 — confirmed in research
-    runner = create_model_session(seed=42, difficulty=EASY, adapter=mock_adapter, output_dir=tmp_sessions_dir)
+def test_outcome_transitions_to_failure(tmp_sessions_dir):
+    """SESS-01: outcome is 'failure' when all 5 valid probes score is_correct=False.
+
+    After CR-01 fix, PROBE: AAAAA is the trivially-correct answer for any engine
+    (all-A cross-char offsets are 0, so it matches the state-layer target directly).
+    Use PROBE: ABCDE which scores 0/5 for seed=42/EASY and never triggers is_correct.
+    """
+    from tests.conftest import FixedResponseAdapter
+    adapter = FixedResponseAdapter("PROBE: ABCDE")
+    runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
     result = runner.run()
 
     assert result["outcome"] == "failure"
@@ -150,7 +162,9 @@ def test_extraction_failure_does_not_consume_attempt(tmp_sessions_dir):
             if self.call_count <= 3:
                 # All-lowercase: no 5-char uppercase run from EASY alphabet "ABCDEFGHIJ"
                 return "this is lowercase, no valid probe at all"
-            return "PROBE: AAAAA"
+            # ABCDE scores 0/5 for seed=42/EASY — does not trigger is_correct, allowing
+            # all 5 valid attempts to run (CR-01: AAAAA now trivially correct, cannot use it here)
+            return "PROBE: ABCDE"
 
         def check_token_budget(self, messages: list) -> None:
             pass

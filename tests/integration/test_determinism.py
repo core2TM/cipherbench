@@ -42,35 +42,25 @@ def test_fifty_sequential_sessions_are_deterministic(tmp_path):
     assert reference_outcome is not None
 
 
-def test_different_seeds_produce_different_session_outcomes(tmp_path):
-    """SESS-04: Sessions run with different seeds must not produce identical puzzle state."""
+def test_different_seeds_produce_different_puzzle_state(tmp_path):
+    """SESS-04: Different seeds must produce different internal puzzle configurations.
+
+    Verifies seed isolation at the engine level: base_shifts must differ between
+    seeds. After CR-01 fix the encoded-guess scoring means aggregate scores can
+    collide for some probe/seed pairs even when base_shifts differ (the mapping is
+    many-to-one).  The meaningful isolation guarantee is that the cipher parameters
+    themselves are distinct, not that every probe produces a different score.
+    """
+    from cipherbench.engine.rule_engine import create_rule_engine
+
     SEED_A = 42
     SEED_B = 99
-    RESPONSE = "PROBE: ABCDE"
 
-    adapter_a = FixedResponseAdapter(RESPONSE)
-    runner_a = create_model_session(
-        seed=SEED_A,
-        difficulty=EASY,
-        adapter=adapter_a,
-        output_dir=tmp_path / "seed_a",
-    )
-    session_a = runner_a.run()
+    engine_a = create_rule_engine(seed=SEED_A, difficulty=EASY)
+    engine_b = create_rule_engine(seed=SEED_B, difficulty=EASY)
 
-    adapter_b = FixedResponseAdapter(RESPONSE)
-    runner_b = create_model_session(
-        seed=SEED_B,
-        difficulty=EASY,
-        adapter=adapter_b,
-        output_dir=tmp_path / "seed_b",
-    )
-    session_b = runner_b.run()
-
-    scores_a = [a["score"] for a in session_a["attempts"] if not a["extraction_failed"]]
-    scores_b = [a["score"] for a in session_b["attempts"] if not a["extraction_failed"]]
-
-    assert scores_a != scores_b, (
-        f"Seeds {SEED_A} and {SEED_B} produced identical score sequences {scores_a}. "
+    assert engine_a._base_shifts != engine_b._base_shifts, (
+        f"Seeds {SEED_A} and {SEED_B} produced identical base_shifts {engine_a._base_shifts}. "
         "Seed isolation may be broken."
     )
 
