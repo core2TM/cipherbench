@@ -31,3 +31,38 @@ def rule_engine_seed_0(default_difficulty: DifficultyConfig):
     Function-scoped (default): each test gets an isolated instance with _round=1.
     """
     return create_rule_engine(seed=0, difficulty=default_difficulty)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 fixtures — mock adapter and session directory
+# ---------------------------------------------------------------------------
+
+
+class FixedResponseAdapter:
+    """Mock adapter that returns a fixed probe string — used in SESS-04 determinism tests.
+
+    Satisfies the adapter interface without making real API calls.
+    """
+
+    def __init__(self, response: str = "PROBE: AAAAA") -> None:
+        self.response = response
+
+    def complete(self, messages: list[dict]) -> str:
+        """Return the fixed response string regardless of message content."""
+        return self.response
+
+    def check_token_budget(self, messages: list[dict]) -> tuple[int, int]:
+        """Return a dummy (used_tokens, max_tokens) tuple — no real token counting."""
+        return (100, 4096)
+
+
+@pytest.fixture
+def mock_adapter() -> FixedResponseAdapter:
+    """Mock adapter returning a fixed PROBE: AAAAA response for determinism tests."""
+    return FixedResponseAdapter("PROBE: AAAAA")
+
+
+@pytest.fixture
+def tmp_sessions_dir(tmp_path):
+    """Temporary sessions directory, unique per test."""
+    return tmp_path / "sessions"
