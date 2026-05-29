@@ -83,7 +83,7 @@ def _write_session(tmp_dir, session_id: str, session: dict) -> None:
 
 
 def _capture_display_session(session: dict, monkeypatch) -> str:
-    """Capture display_session Rich output by patching _console.
+    """Capture display_session Rich output via injected console parameter.
 
     Returns the captured string output.
     """
@@ -91,7 +91,7 @@ def _capture_display_session(session: dict, monkeypatch) -> str:
 
     captured = io.StringIO()
     mock_console = Console(file=captured, force_terminal=False, width=120)
-    monkeypatch.setattr(inspector_mod, "_console", mock_console)
+    # monkeypatch not needed — display_session uses injected console parameter only
     display_session(session, mock_console)
     return captured.getvalue()
 
