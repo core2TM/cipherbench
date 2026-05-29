@@ -18,16 +18,13 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 - [x] RNG discipline: no global `random.seed()` mutation; isolated `random.Random(seed)` per engine — Validated in Phase 01: Rule Engine
 - [x] Procedural puzzle generator: `generate_puzzle(seed)` produces reproducible, hash-verified `Puzzle` objects with configurable difficulty tiers (EASY/MEDIUM/HARD) — Validated in Phase 02: Puzzle Generator
 - [x] Configurable difficulty axes: `state_change_rate` and `cross_char_depth` in `DifficultyConfig`; tier presets produce measurably distinct complexity — Validated in Phase 02: Puzzle Generator
+- [x] Scoring: success rate + efficiency score per puzzle, AGI proximity normalization against human baseline, per-difficulty-tier breakdowns — Validated in Phase 04: Scoring & Reporting
+- [x] Human baseline storage — records human sessions alongside model sessions in the same JSON schema for comparison — Validated in Phase 03 & 04
+- [x] Session inspector — CLI command to replay and inspect a session trace (inputs, feedback, final answer) — Validated in Phase 05: Session Inspector
 
 ### Active
 
-- [ ] Rule engine with three composable layers: State (history-dependent rules), Cross-Character Interdependence (positional mixing), and Hidden Feedback (score-only output like Wordle/Mastermind)
-- [ ] Procedural puzzle generator that creates unlimited fresh puzzles with configurable difficulty axes
-- [ ] CLI interface for both model runs (automated) and human play (manual baseline recording)
-- [ ] Provider-agnostic model runner supporting multiple frontier APIs (Anthropic, OpenAI, Google, etc.)
-- [ ] Scoring: success rate + efficiency score (attempts used) per puzzle, aggregated across N runs
-- [ ] Human baseline storage — records human sessions alongside model sessions for comparison
-- [ ] Session inspector — CLI command to replay and inspect a session trace (inputs, feedback, final answer)
+_(no active requirements — all v1 requirements validated)_
 
 ### Out of Scope
 
@@ -58,8 +55,11 @@ A model that solves CipherBench has demonstrated genuine hypothesis-driven reaso
 | All three enhancements in v1 | User identified each loophole independently; combining them is the point of the benchmark | Implemented (Phase 01) |
 | Layered architecture for rule engine | Composable layers (base cipher + state modifier + cross-char transform + feedback mode) let difficulty axes be tuned independently | Implemented as pure functions in `engine/layers.py` (Phase 01) |
 | Procedural generation over fixed set | Prevents memorization / dataset contamination; unlimited fresh puzzles | Implemented: `generate_puzzle(seed)` in `cipherbench/puzzle.py` (Phase 02) |
-| CLI for human baseline (not web UI) | Keeps v1 scope tight; human plays through same interface as model harness | — Pending |
-| Provider-agnostic runner | Researcher wants to test many frontier models; hardcoding one provider would require forking | — Pending |
+| CLI for human baseline (not web UI) | Keeps v1 scope tight; human plays through same interface as model harness | Implemented: `cipherbench play` in Phase 03 |
+| Provider-agnostic runner | Researcher wants to test many frontier models; hardcoding one provider would require forking | Implemented: LiteLLMAdapter in Phase 03 |
+| 3-module scoring split (scorer/reporter/report_writer) | scorer is pure computation with no I/O; reporter handles Rich terminal; report_writer handles JSON — clean separation of concerns | Implemented in Phase 04 |
+| efficiency_score clamped to [0.0, 1.0] | Prevents >1.0 output when attempts_used=0 edge case hit | Implemented in scorer.py Phase 04 |
+| SystemExit(1) from inspect_session (service module) | CLI use case only; known limitation flagged in code review (CR-01) — library callers should wrap in try/except SystemExit | Accepted in Phase 05; deferred to future refactor |
 
 ## Evolution
 
@@ -79,4 +79,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-29 — Phase 02 complete (Puzzle Generator)*
+*Last updated: 2026-05-29 — Phase 05 complete (Session Inspector) — v1 milestone complete*
