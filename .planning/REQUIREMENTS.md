@@ -21,17 +21,17 @@
 
 ### Session & CLI
 
-- [ ] **SESS-01**: `cipherbench run` command feeds a set of puzzles to a specified model via LiteLLM and records each session as a JSON file (model name, seed, all attempts + scores, final answer, outcome)
-- [ ] **SESS-02**: `cipherbench play` command presents puzzles to a human via CLI with identical prompt and feedback format as the model run — records sessions to the same JSON schema
+- [x] **SESS-01**: `cipherbench run` command feeds a set of puzzles to a specified model via LiteLLM and records each session as a JSON file (model name, seed, all attempts + scores, final answer, outcome)
+- [x] **SESS-02**: `cipherbench play` command presents puzzles to a human via CLI with identical prompt and feedback format as the model run — records sessions to the same JSON schema
 - [ ] **SESS-03**: `cipherbench inspect <session-id>` command replays a stored session trace, displaying each probe attempt, the score returned, and the final answer with outcome
-- [ ] **SESS-04**: Session state is constructed fresh per session via a factory function — no shared mutable state between sessions; a 50-run sequential determinism test must pass
+- [x] **SESS-04**: Session state is constructed fresh per session via a factory function — no shared mutable state between sessions; a 50-run sequential determinism test must pass
 
 ### Model Adapters
 
-- [ ] **ADAPT-01**: LiteLLM adapter provides a single `complete(messages) -> str` interface that routes to any LiteLLM-supported provider (Anthropic, OpenAI, Google, etc.) via a config-supplied model string
-- [ ] **ADAPT-02**: Adapter checks token budget at session initialization — warns and aborts if the projected session length exceeds the model's context window, preventing silent truncation
-- [ ] **ADAPT-03**: Adapter handles rate-limit responses with exponential backoff and retry; session status is checkpointed per attempt so a rate-limited session can resume or be marked as `rate_limited` rather than lost
-- [ ] **ADAPT-04**: Adapter extracts a valid probe string from the model's freeform response using regex + fallback parsing — structured output is never assumed
+- [x] **ADAPT-01**: LiteLLM adapter provides a single `complete(messages) -> str` interface that routes to any LiteLLM-supported provider (Anthropic, OpenAI, Google, etc.) via a config-supplied model string
+- [x] **ADAPT-02**: Adapter checks token budget at session initialization — warns and aborts if the projected session length exceeds the model's context window, preventing silent truncation
+- [x] **ADAPT-03**: Adapter handles rate-limit responses with exponential backoff and retry; session status is checkpointed per attempt so a rate-limited session can resume or be marked as `rate_limited` rather than lost
+- [x] **ADAPT-04**: Adapter extracts a valid probe string from the model's freeform response using regex + fallback parsing — structured output is never assumed
 
 ### Scoring & Reporting
 
@@ -78,13 +78,13 @@
 | GEN-01 | Phase 2 | Complete |
 | GEN-02 | Phase 2 | Complete |
 | GEN-03 | Phase 2 | Complete |
-| SESS-01 | Phase 3 | Pending |
-| SESS-02 | Phase 3 | Pending |
-| SESS-04 | Phase 3 | Pending |
-| ADAPT-01 | Phase 3 | Pending |
-| ADAPT-02 | Phase 3 | Pending |
-| ADAPT-03 | Phase 3 | Pending |
-| ADAPT-04 | Phase 3 | Pending |
+| SESS-01 | Phase 3 | Complete |
+| SESS-02 | Phase 3 | Complete |
+| SESS-04 | Phase 3 | Complete |
+| ADAPT-01 | Phase 3 | Complete |
+| ADAPT-02 | Phase 3 | Complete |
+| ADAPT-03 | Phase 3 | Complete |
+| ADAPT-04 | Phase 3 | Complete |
 | SCORE-01 | Phase 4 | Pending |
 | SCORE-02 | Phase 4 | Pending |
 | SCORE-03 | Phase 4 | Pending |
