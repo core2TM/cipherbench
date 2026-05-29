@@ -22,6 +22,7 @@ Security:
 """
 from __future__ import annotations
 
+import glob as _glob
 import json
 import logging
 import random
@@ -278,7 +279,7 @@ def _find_resumable_session(
     """
     if not output_dir.exists():
         return None
-    for json_file in output_dir.glob(f"*-{model_slug}.json"):
+    for json_file in output_dir.glob(f"*-{_glob.escape(model_slug)}.json"):  # WR-02: escape glob metacharacters
         try:
             with json_file.open(encoding="utf-8") as f:
                 data = json.load(f)
