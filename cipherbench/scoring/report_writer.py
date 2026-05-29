@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -31,8 +33,18 @@ def write_json_report(report: dict, output_file: Path) -> None:
     """
     try:
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        with output_file.open("w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, ensure_ascii=False)
+        # WR-03: atomic write via mkstemp + os.replace, consistent with writer.py pattern
+        fd, tmp = tempfile.mkstemp(dir=output_file.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(report, f, indent=2, ensure_ascii=False)
+            os.replace(tmp, output_file)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
         logger.info("Score report written to %s", output_file)
     except OSError as exc:
         logger.error("Failed to write score report to %s: %s", output_file, exc)
