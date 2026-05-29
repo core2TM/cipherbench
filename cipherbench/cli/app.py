@@ -172,7 +172,8 @@ def score_command(
     render_score_report(report, model=model or "human")
 
     if output_file:
-        write_json_report(report, Path(output_file))
+        resolved_output = Path(output_file).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
+        write_json_report(report, resolved_output)
 
 
 # ---------------------------------------------------------------------------
