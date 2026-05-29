@@ -78,7 +78,7 @@ Plans:
 - [x] 03-01-PLAN.md — Environment setup: add litellm/typer/rich/tenacity dependencies + CLI entry point to pyproject.toml; create all Phase 3 test stubs
 
 **Wave 1** *(blocked on Wave 0 completion)*
-- [ ] 03-02-PLAN.md — Adapter + extraction contracts: LiteLLMAdapter (complete, check_token_budget, tenacity retry), SessionRecord/AttemptEntry TypedDicts, extract_probe/extract_answer, build_system_prompt/build_user_turn
+- [x] 03-02-PLAN.md — Adapter + extraction contracts: LiteLLMAdapter (complete, check_token_budget, tenacity retry), SessionRecord/AttemptEntry TypedDicts, extract_probe/extract_answer, build_system_prompt/build_user_turn
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 03-03-PLAN.md — Model session runner: SessionWriter (atomic checkpoint), ModelSessionRunner (probe loop, extraction, rate-limit, inline checkpoint), create_model_session factory
@@ -125,6 +125,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
-| 3. Session Infrastructure & Model Adapters | 1/5 | In Progress|  |
+| 3. Session Infrastructure & Model Adapters | 2/5 | In Progress|  |
 | 4. Scoring & Reporting | 0/TBD | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
