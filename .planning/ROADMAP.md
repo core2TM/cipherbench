@@ -138,7 +138,7 @@ Plans:
 Plans:
 
 **Wave 0**
-- [ ] 05-01-PLAN.md — inspector.py module stub (inspect_session + display_session signatures, _console) + test_inspector.py with all 12 SESS-03 test stubs (skipped)
+- [x] 05-01-PLAN.md — inspector.py module stub (inspect_session + display_session signatures, _console) + test_inspector.py with all 12 SESS-03 test stubs (skipped)
 
 **Wave 1** *(blocked on Wave 0 completion)*
 - [ ] 05-02-PLAN.md — Full inspector.py implementation (D-01 through D-10) + inspect_command in app.py (D-07) + inspect_session export in __init__.py + all 12 tests green
@@ -160,4 +160,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
 | 4. Scoring & Reporting | 4/4 | Complete    | 2026-05-29 |
-| 5. Session Inspector | 0/2 | Not started | - |
+| 5. Session Inspector | 1/2 | In Progress|  |
