@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Rule Engine** - Implement the three-layer cipher rule engine with enforced information boundary (completed 2026-05-28)
 - [x] **Phase 2: Puzzle Generator** - Build reproducible, seeded puzzle generation with configurable difficulty (completed 2026-05-28)
-- [ ] **Phase 3: Session Infrastructure & Model Adapters** - Make the benchmark runnable end-to-end with real model API calls
+- [x] **Phase 3: Session Infrastructure & Model Adapters** - Make the benchmark runnable end-to-end with real model API calls (completed 2026-05-29)
 - [ ] **Phase 4: Scoring & Reporting** - Compute success rate, efficiency, AGI proximity, and difficulty breakdowns
 - [ ] **Phase 5: Session Inspector** - Add CLI replay and inspection of stored session traces
 
@@ -87,7 +87,7 @@ Plans:
 - [x] 03-04-PLAN.md — Human runner + CLI: HumanSessionRunner (typer.prompt loop, Rich display, same JSON schema), cipherbench run/play Typer subcommands, human-verify checkpoint
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 03-05-PLAN.md — Determinism gate: SESS-04 50-run sequential determinism test, different-seeds test, global-random-non-pollution test
+- [x] 03-05-PLAN.md — Determinism gate: SESS-04 50-run sequential determinism test, different-seeds test, global-random-non-pollution test
 
 **Cross-cutting constraints:**
 - All prior phase tests must pass at every wave boundary
@@ -125,6 +125,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
-| 3. Session Infrastructure & Model Adapters | 4/5 | In Progress|  |
+| 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
 | 4. Scoring & Reporting | 0/TBD | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
