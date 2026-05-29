@@ -104,7 +104,26 @@ Plans:
   2. Each session receives an efficiency score computed as `success × (max_attempts - attempts_used + 1) / max_attempts`
   3. Given at least one recorded human baseline session, the scorer produces an AGI proximity score that normalizes the model's composite score against the human composite score for the same puzzle set
   4. Score report breaks down all metrics by difficulty tier (easy / medium / hard) derived from puzzle config parameters
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+
+**Wave 0**
+- [ ] 04-01-PLAN.md — cipherbench/scoring/ package skeleton (scorer.py, reporter.py, report_writer.py stubs) + all 22 Wave 0 test stubs
+
+**Wave 1** *(blocked on Wave 0 completion)*
+- [ ] 04-02-PLAN.md — Implement scorer.py pure computation: load_sessions, efficiency_score, success_rate, group_by_difficulty, agi_proximity, compute_report (SCORE-01 through SCORE-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 04-03-PLAN.md — Implement reporter.py (Rich Panel+Table, live summary line) + report_writer.py (JSON file write, null agi_proximity per D-12)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 04-04-PLAN.md — Wire CLI: score subcommand in app.py (D-02 flags) + live summary injection in run_command (D-03) + cipherbench/__init__.py scoring exports
+
+**Cross-cutting constraints:**
+- All prior phase tests must pass at every wave boundary
+- No business logic in cli/app.py — all computation in scorer.py
+- Session files are read-only — Phase 4 must not modify session JSON files
 
 ### Phase 5: Session Inspector
 **Goal**: Any recorded session can be replayed and inspected in full via CLI — every probe, every score, and the final outcome are displayed in sequence
@@ -126,5 +145,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
 | 3. Session Infrastructure & Model Adapters | 5/5 | Complete   | 2026-05-29 |
-| 4. Scoring & Reporting | 0/TBD | Not started | - |
+| 4. Scoring & Reporting | 0/4 | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
