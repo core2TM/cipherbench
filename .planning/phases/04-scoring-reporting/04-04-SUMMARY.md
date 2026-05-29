@@ -24,7 +24,7 @@ decisions:
 metrics:
   duration: 8m
   completed_date: "2026-05-29"
-  tasks_completed: 1
+  tasks_completed: 2
   files_created: 0
   files_modified: 3
 ---
@@ -39,10 +39,18 @@ metrics:
 |------|------|--------|-------|
 | 1 (RED) | Unskip test_score_command_help | 2c0c763 | tests/unit/test_scoring/test_scorer.py |
 | 1 (GREEN) | Wire score_command + live summary + __init__ exports | d91e935 | cipherbench/cli/app.py, cipherbench/__init__.py |
+| 2 (checkpoint:human-verify) | End-to-end CLI verification | APPROVED | — |
 
-## Checkpoint Pending
+## Checkpoint Result
 
-Task 2 (checkpoint:human-verify) reached — awaiting human verification of end-to-end CLI behavior.
+Task 2 (checkpoint:human-verify) — APPROVED by human on 2026-05-29.
+
+All verification checks passed:
+- 136 tests pass (0 failed, 0 skipped)
+- Rich Panel + Table renders correctly with all D-11 columns
+- AGI proximity shows N/A in terminal, null in JSON (D-12 compliant)
+- Live summary line format correct (D-03)
+- load_sessions filters correctly by runner_type and model
 
 ## Verification Results
 

@@ -118,7 +118,7 @@ Plans:
 - [x] 04-03-PLAN.md — Implement reporter.py (Rich Panel+Table, live summary line) + report_writer.py (JSON file write, null agi_proximity per D-12)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 04-04-PLAN.md — Wire CLI: score subcommand in app.py (D-02 flags) + live summary injection in run_command (D-03) + cipherbench/__init__.py scoring exports
+- [x] 04-04-PLAN.md — Wire CLI: score subcommand in app.py (D-02 flags) + live summary injection in run_command (D-03) + cipherbench/__init__.py scoring exports
 
 **Cross-cutting constraints:**
 - All prior phase tests must pass at every wave boundary
