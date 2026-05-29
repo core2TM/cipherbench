@@ -14,10 +14,14 @@ Available:
     EASY              — DifficultyConfig preset: 10-char alphabet, depth=1, rate=1.0
     MEDIUM            — DifficultyConfig preset: 26-char alphabet, depth=2, rate=1.5
     HARD              — DifficultyConfig preset: 36-char alphabet, depth=3, rate=2.0
+    load_sessions     — load and filter terminal sessions from a directory
+    compute_report    — aggregate all metrics into a ScoreReport dict
+    ScoreReport       — TypedDict: the structured scoring result
 """
 from cipherbench.types import AttemptScore, DifficultyConfig
 from cipherbench.engine.rule_engine import RuleEngine, create_rule_engine
 from cipherbench.puzzle import Puzzle, generate_puzzle, verify_puzzle, get_tier, EASY, MEDIUM, HARD
+from cipherbench.scoring.scorer import load_sessions, compute_report, ScoreReport
 
 __all__ = [
     "AttemptScore",
@@ -31,4 +35,7 @@ __all__ = [
     "EASY",
     "MEDIUM",
     "HARD",
+    "load_sessions",
+    "compute_report",
+    "ScoreReport",
 ]

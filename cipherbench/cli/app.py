@@ -105,6 +105,13 @@ def run_command(
                 f"seed={puzzle_seed} outcome={session_record['outcome']}"
             )
 
+    # D-01, D-03: live summary after all sessions complete
+    from cipherbench.scoring.scorer import load_sessions as _load_sessions
+    from cipherbench.scoring.reporter import render_live_summary as _render_live_summary
+    completed_sessions = _load_sessions(out_path, runner_type="model", model=model)
+    human_baseline = _load_sessions(out_path, runner_type="human")
+    _render_live_summary(completed_sessions, human_baseline)
+
 
 # ---------------------------------------------------------------------------
 # `cipherbench play` — D-13 flags
@@ -130,6 +137,42 @@ def play_command(
     typer.echo(
         f"Session complete: seed={play_seed} outcome={session_record['outcome']}"
     )
+
+
+# ---------------------------------------------------------------------------
+# `cipherbench score` — SCORE-01 through SCORE-04 flags (D-02)
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="score")
+def score_command(
+    model: Annotated[Optional[str], typer.Option("--model", help="LiteLLM model string to score")] = None,
+    sessions_dir: Annotated[str, typer.Option("--sessions-dir", help="Directory to read session files from")] = "./sessions",
+    difficulty: Annotated[Optional[Difficulty], typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = None,
+    output_file: Annotated[Optional[str], typer.Option("--output-file", help="Write JSON report to this path")] = None,
+    human: Annotated[bool, typer.Option("--human/--no-human", help="Score human sessions instead of model sessions")] = False,
+) -> None:
+    """Compute scoring report for a model or human player (SCORE-01 through SCORE-04). No business logic here — delegates to scorer + reporter + report_writer."""
+    from cipherbench.scoring.scorer import load_sessions, compute_report
+    from cipherbench.scoring.reporter import render_score_report
+    from cipherbench.scoring.report_writer import write_json_report
+
+    runner_type = "human" if human else "model"
+    sessions_path = Path(sessions_dir).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
+    diff_str = difficulty.value if difficulty is not None else None
+
+    model_sessions = load_sessions(sessions_path, runner_type=runner_type, model=model, difficulty=diff_str)
+    human_sessions = load_sessions(sessions_path, runner_type="human", difficulty=diff_str) if not human else []
+
+    if not model_sessions:
+        typer.echo("No terminal sessions found matching the given filters.", err=True)
+        raise typer.Exit(code=1)
+
+    report = compute_report(model_sessions, human_sessions, model_str=model)
+    render_score_report(report, model=model or "human")
+
+    if output_file:
+        write_json_report(report, Path(output_file))
 
 
 # ---------------------------------------------------------------------------
