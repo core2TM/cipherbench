@@ -172,7 +172,8 @@ def score_command(
         raise typer.Exit(code=1)
 
     report = compute_report(model_sessions, human_sessions, model_str=model)
-    render_score_report(report, model=model or "human")
+    label = model if model is not None else ("human" if human else "(all models)")
+    render_score_report(report, model=label)
 
     if output_file:
         resolved_output = Path(output_file).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
