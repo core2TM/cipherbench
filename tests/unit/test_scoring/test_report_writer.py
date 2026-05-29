@@ -9,7 +9,6 @@ writer_mod = pytest.importorskip("cipherbench.scoring.report_writer")
 write_json_report = writer_mod.write_json_report
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 2")
 def test_write_json_report_creates_file(tmp_path):
     """Creates file and writes valid JSON."""
     report = {
@@ -29,7 +28,6 @@ def test_write_json_report_creates_file(tmp_path):
     assert data["totals"]["agi_proximity"] is None  # D-12: null not string "N/A"
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 2")
 def test_write_json_report_null_agi_proximity(tmp_path):
     """D-12: None stored as JSON null not string "N/A"."""
     report = {
@@ -42,7 +40,6 @@ def test_write_json_report_null_agi_proximity(tmp_path):
     assert "N/A" not in raw
 
 
-@pytest.mark.skip(reason="Wave 0 stub — implement in Wave 2")
 def test_write_json_report_creates_parent_dirs(tmp_path):
     """Creates intermediate directories."""
     out = tmp_path / "nested" / "deep" / "report.json"
