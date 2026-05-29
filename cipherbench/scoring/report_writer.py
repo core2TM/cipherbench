@@ -29,7 +29,11 @@ def write_json_report(report: dict, output_file: Path) -> None:
     output_file : Path
         Destination file path. Parent directories are created if needed.
     """
-    output_file.parent.mkdir(parents=True, exist_ok=True)
-    with output_file.open("w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
-    logger.info("Score report written to %s", output_file)
+    try:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with output_file.open("w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+        logger.info("Score report written to %s", output_file)
+    except OSError as exc:
+        logger.error("Failed to write score report to %s: %s", output_file, exc)
+        raise

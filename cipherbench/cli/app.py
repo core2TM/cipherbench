@@ -182,7 +182,11 @@ def score_command(
 
     if output_file:
         resolved_output = Path(output_file).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
-        write_json_report(report, resolved_output)
+        try:
+            write_json_report(report, resolved_output)
+        except OSError as exc:
+            typer.echo(f"Error: could not write report: {exc}", err=True)
+            raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
