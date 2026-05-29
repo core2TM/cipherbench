@@ -92,6 +92,9 @@ def run_command(
     config = _difficulty_to_config(difficulty)
     out_path = Path(output_dir)
 
+    # D-01, D-03: collect only current-run sessions (not all historical sessions)
+    current_run_sessions: list[dict] = []
+
     for puzzle_idx in range(num_puzzles):
         # RNG isolation: isolated random.Random() per puzzle (D-11, GEN-04)
         puzzle_seed = seed if seed is not None else random.Random().randint(0, 2**32 - 1)
@@ -100,17 +103,17 @@ def run_command(
             adapter = LiteLLMAdapter(model, litellm_config_path=litellm_config)
             runner = create_model_session(puzzle_seed, config, adapter, out_path)
             session_record = runner.run()
+            current_run_sessions.append(session_record)
             typer.echo(
                 f"Puzzle {puzzle_idx + 1}/{num_puzzles} Run {run_idx + 1}/{runs_per_puzzle}: "
                 f"seed={puzzle_seed} outcome={session_record['outcome']}"
             )
 
-    # D-01, D-03: live summary after all sessions complete
+    # D-01, D-03: live summary after all sessions complete — use current-run sessions only
     from cipherbench.scoring.scorer import load_sessions as _load_sessions
     from cipherbench.scoring.reporter import render_live_summary as _render_live_summary
-    completed_sessions = _load_sessions(out_path, runner_type="model", model=model)
     human_baseline = _load_sessions(out_path, runner_type="human")
-    _render_live_summary(completed_sessions, human_baseline)
+    _render_live_summary(current_run_sessions, human_baseline)
 
 
 # ---------------------------------------------------------------------------
