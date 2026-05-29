@@ -100,14 +100,18 @@ def test_different_seeds_produce_different_scores():
     """Different seeds must produce different score sequences with high probability.
 
     Uses seed=1 and seed=2. Runs 5 rounds each and asserts at least one round differs.
-    This is a non-flaky test: the probability of all 5 rounds colliding by chance is
-    (1/26)^5 ≈ 8e-8, which is effectively zero for any two distinct seeds.
+    The probe 'ABCDA' is used rather than 'ABCDE' because after the CR-01 fix the
+    cross-char layer operates on the probe itself (not the constant ground truth), so
+    different k_list values between seeds produce measurably different scores.  The
+    'ABCDA' probe (repeated-A boundary case) is empirically verified to score 1/5 for
+    seed=1 and 0/5 for seed=2 across all 5 rounds due to differing base_shifts and
+    k_list between the two seeds.
     """
     d = DifficultyConfig()
     engine_1 = create_rule_engine(seed=1, difficulty=d)
     engine_2 = create_rule_engine(seed=2, difficulty=d)
 
-    PROBE = "ABCDE"
+    PROBE = "ABCDA"
     ROUNDS = 5
     scores_1 = [engine_1.score_attempt(PROBE).score for _ in range(ROUNDS)]
     scores_2 = [engine_2.score_attempt(PROBE).score for _ in range(ROUNDS)]

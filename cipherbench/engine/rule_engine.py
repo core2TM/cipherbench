@@ -128,9 +128,33 @@ class RuleEngine:
         round_num = self._round
         self._round += 1
 
-        # --- Encode and score (ciphertext is never returned to caller) ---
-        current_target = self._encode_for_round(round_num)
-        score = count_correct(guess, current_target)
+        # --- Encode guess through both layers; target is state-layer of ground truth ---
+        # Apply state layer to the guess (round-dependent shift)
+        shifted_guess = apply_state_layer(
+            guess,
+            self._base_shifts,
+            round_num,
+            self._alphabet,
+            self._state_change_rate,
+        )
+        # Apply cross-char layer to the state-shifted guess using the original guess
+        # as plaintext source for offsets (CR-01 fix: cross-char acts on the probe,
+        # not on the constant ground_truth whose chars are all alphabet[0]).
+        encoded_guess = apply_cross_char_layer_multi(
+            shifted_guess, guess, self._k_list, self._alphabet
+        )
+        # Target: state-layer encoding of ground truth (cross-char not applied to
+        # reference — ground_truth = alphabet[0]*n would make it a no-op anyway).
+        shifted_target = apply_state_layer(
+            self._ground_truth,
+            self._base_shifts,
+            round_num,
+            self._alphabet,
+            self._state_change_rate,
+        )
+        target_str = "".join(self._alphabet[i] for i in shifted_target)
+        # Score encoded guess against target (ciphertext never returned to caller)
+        score = count_correct(encoded_guess, target_str)
         return AttemptScore(
             score=score,
             max_score=len(guess),
