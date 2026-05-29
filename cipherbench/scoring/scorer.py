@@ -115,7 +115,7 @@ def efficiency_score(session: dict) -> float:
     attempts_used = count of attempts where extraction_failed=False (D-06).
     Division by zero is impossible: MAX_ATTEMPTS is a fixed positive integer.
     """
-    success = 1 if session["outcome"] == "success" else 0
+    success = 1 if session.get("outcome") == "success" else 0
     attempts_used = sum(
         1 for a in session.get("attempts", []) if not a.get("extraction_failed", False)
     )
@@ -131,7 +131,7 @@ def success_rate(sessions: list[dict]) -> float:
     """
     if not sessions:
         return 0.0
-    return sum(1 for s in sessions if s["outcome"] == "success") / len(sessions)
+    return sum(1 for s in sessions if s.get("outcome") == "success") / len(sessions)
 
 
 def group_by_difficulty(sessions: list[dict]) -> dict[str, list[dict]]:

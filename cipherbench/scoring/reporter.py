@@ -104,7 +104,7 @@ def render_live_summary(sessions: list[dict], human_sessions: list[dict]) -> Non
     from cipherbench.scoring.scorer import agi_proximity, efficiency_score, success_rate
 
     total = len(sessions)
-    successes = sum(1 for s in sessions if s["outcome"] == "success")
+    successes = sum(1 for s in sessions if s.get("outcome") == "success")
     sr = success_rate(sessions)
     avg_eff = (
         sum(efficiency_score(s) for s in sessions) / total if total else 0.0
