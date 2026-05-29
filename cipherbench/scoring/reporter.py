@@ -34,7 +34,57 @@ def render_score_report(report: "ScoreReport", model: str) -> None:
     model : str
         Model identifier string shown in the Panel title.
     """
-    raise NotImplementedError
+    # Panel header — matches _show_puzzle_header style from human_runner.py
+    _console.print(
+        Panel(
+            f"Model: {model}  |  Sessions scored: {report['sessions_scored']}",
+            title="[bold]CipherBench Score Report[/bold]",
+        )
+    )
+
+    # Table — matches _show_attempt_history style (show_header=True, header_style="bold")
+    table = Table(title="Score Breakdown", show_header=True, header_style="bold")
+    table.add_column("Difficulty", min_width=10)
+    table.add_column("Sessions", justify="right", min_width=8)
+    table.add_column("Success Rate", justify="right", min_width=12)
+    table.add_column("Avg Efficiency", justify="right", min_width=14)
+    table.add_column("AGI Proximity", justify="right", min_width=13)
+
+    for tier, stats in report["by_difficulty"].items():
+        proximity_str = (
+            f"{stats['agi_proximity']:.2f}x"
+            if stats["agi_proximity"] is not None
+            else "N/A"
+        )
+        table.add_row(
+            tier,
+            str(stats["sessions"]),
+            f"{stats['success_rate']:.0%}",
+            f"{stats['avg_efficiency']:.2f}",
+            proximity_str,
+        )
+
+    # Totals row — bold to distinguish
+    totals = report["totals"]
+    proximity_str = (
+        f"{totals['agi_proximity']:.2f}x"
+        if totals["agi_proximity"] is not None
+        else "N/A"
+    )
+    table.add_row(
+        "[bold]TOTAL[/bold]",
+        f"[bold]{totals['sessions']}[/bold]",
+        f"[bold]{totals['success_rate']:.0%}[/bold]",
+        f"[bold]{totals['avg_efficiency']:.2f}[/bold]",
+        f"[bold]{proximity_str}[/bold]",
+    )
+    _console.print(table)
+
+    # D-10 hint when no baseline available
+    if totals["agi_proximity"] is None:
+        _console.print(
+            "[dim]Hint: Run `cipherbench play` to record a human baseline.[/dim]"
+        )
 
 
 def render_live_summary(sessions: list[dict], human_sessions: list[dict]) -> None:
@@ -50,4 +100,18 @@ def render_live_summary(sessions: list[dict], human_sessions: list[dict]) -> Non
     human_sessions : list[dict]
         Human baseline sessions for AGI proximity calculation (SCORE-03).
     """
-    raise NotImplementedError
+    # Lazy import to avoid any circular dependency
+    from cipherbench.scoring.scorer import agi_proximity, efficiency_score, success_rate
+
+    total = len(sessions)
+    successes = sum(1 for s in sessions if s["outcome"] == "success")
+    sr = success_rate(sessions)
+    avg_eff = (
+        sum(efficiency_score(s) for s in sessions) / total if total else 0.0
+    )
+    proximity = agi_proximity(sessions, human_sessions)
+    proximity_str = f"{proximity:.2f}x" if proximity is not None else "N/A"
+    typer.echo(
+        f"{successes}/{total} success ({sr:.0%}) | "
+        f"avg efficiency: {avg_eff:.2f} | AGI proximity: {proximity_str}"
+    )
