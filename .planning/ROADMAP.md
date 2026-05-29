@@ -69,8 +69,30 @@ Plans:
   3. Running 50 sequential sessions from the same seed produces identical session outcomes (determinism test passes)
   4. A single `complete(messages) -> str` interface routes to Anthropic, OpenAI, and Google without adapter-specific code in the caller; a rate-limit response triggers exponential backoff with per-attempt checkpointing
   5. The adapter extracts a valid probe string from freeform model output using regex with fallback parsing — sessions do not fail due to minor formatting variation in model responses
-**Plans**: TBD
+**Plans**: 5 plans
 **UI hint**: yes
+
+Plans:
+
+**Wave 0**
+- [ ] 03-01-PLAN.md — Environment setup: add litellm/typer/rich/tenacity dependencies + CLI entry point to pyproject.toml; create all Phase 3 test stubs
+
+**Wave 1** *(blocked on Wave 0 completion)*
+- [ ] 03-02-PLAN.md — Adapter + extraction contracts: LiteLLMAdapter (complete, check_token_budget, tenacity retry), SessionRecord/AttemptEntry TypedDicts, extract_probe/extract_answer, build_system_prompt/build_user_turn
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-03-PLAN.md — Model session runner: SessionWriter (atomic checkpoint), ModelSessionRunner (probe loop, extraction, rate-limit, inline checkpoint), create_model_session factory
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-04-PLAN.md — Human runner + CLI: HumanSessionRunner (typer.prompt loop, Rich display, same JSON schema), cipherbench run/play Typer subcommands, human-verify checkpoint
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 03-05-PLAN.md — Determinism gate: SESS-04 50-run sequential determinism test, different-seeds test, global-random-non-pollution test
+
+**Cross-cutting constraints:**
+- All prior phase tests must pass at every wave boundary
+- No global `random.seed()` calls anywhere in session or adapter code (D-11 discipline)
+- Session JSON schema (D-08, D-11) locked — Phase 4 and Phase 5 depend on it
 
 ### Phase 4: Scoring & Reporting
 **Goal**: Raw session JSON is turned into a full scoring report — success rate, efficiency score, AGI proximity score, and per-difficulty breakdowns are all computable
@@ -103,6 +125,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Rule Engine | 3/3 | Complete    | 2026-05-28 |
 | 2. Puzzle Generator | 3/3 | Complete    | 2026-05-28 |
-| 3. Session Infrastructure & Model Adapters | 0/TBD | Not started | - |
+| 3. Session Infrastructure & Model Adapters | 0/5 | Not started | - |
 | 4. Scoring & Reporting | 0/TBD | Not started | - |
 | 5. Session Inspector | 0/TBD | Not started | - |
