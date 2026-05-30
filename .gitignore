@@ -1,41 +1,43 @@
+# Python
 __pycache__/
-#python
-  *.py[cod]
-  *.pyo
-  *.pyd
-  .Python
-  *.egg-info/
-  dist/
-  build/
-  .eggs/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
 
-  # uv
-  .venv/
-  uv.lock
+# uv
+.venv/
+uv.lock
 
-  # Testing
-  .pytest_cache/
-  .hypothesis/
-  .coverage
-  htmlcov/
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
 
-  # Session data (local benchmark results — not source code)
-  sessions/
-  *.db
-  *.sqlite
+# Session data
+sessions/
+*.db
+*.sqlite
 
-  # Environment / secrets
-  .env
-  .env.*
-  !.env.example
+# Environment / secrets
+.env
+.env.*
+!.env.example
 
-  # macOS
-  .DS_Store
+# macOS
+.DS_Store
 
-  # IDE
-  .vscode/
-  .idea/
-  *.swp
-  .claude/
-  .planning/
-  CLAUDE.md
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Local tooling
+.claude/
+.planning/
+CLAUDE.md
