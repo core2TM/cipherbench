@@ -24,13 +24,13 @@ models that never produce a valid PROBE: response.
 """
 
 
-def extract_probe(text: str, alphabet: str) -> str | None:
+def extract_probe(text: str, alphabet: str, output_length: int = 5) -> str | None:
     """Extract a probe string from a model's freeform response (ADAPT-04, D-01, D-05).
 
     Tries the primary pattern (strict ``PROBE:`` tag) first.  Falls back to any
-    5-character run from the alphabet if the primary pattern fails.  Returns None
-    if both patterns fail — the session runner records ``extraction_failed=True``
-    and does NOT consume an attempt count (D-05).
+    ``output_length``-character run from the alphabet if the primary pattern fails.
+    Returns None if both patterns fail — the session runner records
+    ``extraction_failed=True`` and does NOT consume an attempt count (D-05).
 
     Parameters
     ----------
@@ -39,11 +39,15 @@ def extract_probe(text: str, alphabet: str) -> str | None:
     alphabet : str
         The puzzle's character set (e.g. 'ABCDEFGHIJKLMNOPQRSTUVWXYZ').
         Must be a non-empty string.
+    output_length : int, optional
+        Expected length of a valid probe string (default 5).  Must match the
+        DifficultyConfig so that probes for non-default lengths are extracted
+        correctly (WR-02).
 
     Returns
     -------
     str or None
-        The extracted 5-character probe string if found; None otherwise.
+        The extracted ``output_length``-character probe string if found; None otherwise.
 
     Raises
     ------
@@ -55,22 +59,22 @@ def extract_probe(text: str, alphabet: str) -> str | None:
 
     pattern_chars = re.escape(alphabet)
 
-    # Primary: strict PROBE: tag with exactly 5 alphabet characters (D-01)
-    # Bounded quantifier {5} prevents ReDoS (T-03-02-03)
-    primary = re.search(rf"PROBE:\s*([{pattern_chars}]{{5}})", text)
+    # Primary: strict PROBE: tag with exactly output_length alphabet characters (D-01)
+    # Bounded quantifier {output_length} prevents ReDoS (T-03-02-03)
+    primary = re.search(rf"PROBE:\s*([{pattern_chars}]{{{output_length}}})", text)
     if primary:
         return primary.group(1)
 
-    # Fallback: any 5-character run from the alphabet (D-05 loose pattern)
-    # Bounded quantifier {5} prevents ReDoS (T-03-02-03)
-    fallback = re.search(rf"([{pattern_chars}]{{5}})", text)
+    # Fallback: any output_length-character run from the alphabet (D-05 loose pattern)
+    # Bounded quantifier {output_length} prevents ReDoS (T-03-02-03)
+    fallback = re.search(rf"([{pattern_chars}]{{{output_length}}})", text)
     if fallback:
         return fallback.group(1)
 
     return None
 
 
-def extract_answer(text: str, alphabet: str) -> str | None:
+def extract_answer(text: str, alphabet: str, output_length: int = 5) -> str | None:
     """Extract a final answer string from a model's freeform response (ADAPT-04, D-02).
 
     Only the primary pattern (strict ``ANSWER:`` tag) is tried.  No fallback is
@@ -84,11 +88,15 @@ def extract_answer(text: str, alphabet: str) -> str | None:
     alphabet : str
         The puzzle's character set (e.g. 'ABCDEFGHIJKLMNOPQRSTUVWXYZ').
         Must be a non-empty string.
+    output_length : int, optional
+        Expected length of a valid answer string (default 5).  Must match the
+        DifficultyConfig so that answers for non-default lengths are extracted
+        correctly (WR-02).
 
     Returns
     -------
     str or None
-        The extracted 5-character answer string if found; None otherwise.
+        The extracted ``output_length``-character answer string if found; None otherwise.
 
     Raises
     ------
@@ -100,10 +108,10 @@ def extract_answer(text: str, alphabet: str) -> str | None:
 
     pattern_chars = re.escape(alphabet)
 
-    # Primary only: strict ANSWER: tag with exactly 5 alphabet characters (D-02)
+    # Primary only: strict ANSWER: tag with exactly output_length alphabet characters (D-02)
     # No fallback for answers — explicit format required at the answer step
-    # Bounded quantifier {5} prevents ReDoS (T-03-02-03)
-    primary = re.search(rf"ANSWER:\s*([{pattern_chars}]{{5}})", text)
+    # Bounded quantifier {output_length} prevents ReDoS (T-03-02-03)
+    primary = re.search(rf"ANSWER:\s*([{pattern_chars}]{{{output_length}}})", text)
     if primary:
         return primary.group(1)
 

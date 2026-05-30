@@ -65,6 +65,7 @@ class ModelSessionRunner:
         writer: SessionWriter,
         session_record: dict,
         valid_attempts_start: int = 0,
+        total_iterations_start: int = 0,
     ) -> None:
         self._puzzle = puzzle
         self._engine = engine
@@ -72,6 +73,7 @@ class ModelSessionRunner:
         self._writer = writer
         self._session_record = session_record
         self._valid_attempts_start = valid_attempts_start  # CR-02: restored budget for resume
+        self._total_iterations_start = total_iterations_start  # WR-01: restored iteration cap for resume
 
     def run(self) -> dict:
         """Execute the probe-attempt loop and return the final session record dict.
@@ -102,7 +104,7 @@ class ModelSessionRunner:
 
         messages: list[dict] = [{"role": "system", "content": system_prompt}]
         valid_attempts: int = self._valid_attempts_start  # CR-02: start from restored budget
-        total_iterations: int = 0
+        total_iterations: int = self._total_iterations_start  # WR-01: start from restored iteration count
 
         while valid_attempts < MAX_ATTEMPTS and total_iterations < MAX_TOTAL_ITERATIONS:
             total_iterations += 1
@@ -122,7 +124,7 @@ class ModelSessionRunner:
 
             messages.append({"role": "assistant", "content": raw})
 
-            probe = extract_probe(raw, alphabet)
+            probe = extract_probe(raw, alphabet, output_length)
 
             if probe is None:
                 # D-05: extraction failure — record entry, do NOT increment valid_attempts
@@ -161,13 +163,13 @@ class ModelSessionRunner:
         if not any(a["is_correct"] for a in self._session_record["attempts"]):
             final_prompt = (
                 f"You have used all your probe attempts. "
-                f"Submit your final answer as: ANSWER: {'X' * output_length}"
+                f"Submit your final answer as: ANSWER: {'#' * output_length}"
             )
             try:
                 raw_ans = self._adapter.complete(
                     messages + [{"role": "user", "content": final_prompt}]
                 )
-                final_answer = extract_answer(raw_ans, alphabet)
+                final_answer = extract_answer(raw_ans, alphabet, output_length)
             except litellm.RateLimitError:
                 self._writer.finalize(self._session_record, "rate_limited")
                 return self._session_record
@@ -227,17 +229,24 @@ def create_model_session(
         )
         puzzle = generate_puzzle(seed, difficulty)
         engine = puzzle.create_engine()
-        # Replay engine state to match already-scored attempts
+        # Replay engine state to match already-scored attempts.
+        # score_attempt decrements _attempts_remaining during replay, which is correct:
+        # after replaying `already_used` probes, _attempts_remaining = 5 - already_used,
+        # leaving exactly the right budget for the resumed session (WR-04).
         already_used = 0
         for attempt in existing["attempts"]:
             if not attempt.get("extraction_failed") and attempt.get("probe"):
                 engine.score_attempt(attempt["probe"])
                 already_used += 1  # CR-02: count valid attempts consumed before rate-limit
+        already_total = len(existing["attempts"])  # WR-01: all entries (valid + failed)
         writer = SessionWriter(output_dir, existing["session_id"])
         # Reset outcome to in_progress so the loop continues
         existing["outcome"] = "in_progress"
-        return ModelSessionRunner(puzzle, engine, adapter, writer, existing,
-                                  valid_attempts_start=already_used)  # CR-02
+        return ModelSessionRunner(
+            puzzle, engine, adapter, writer, existing,
+            valid_attempts_start=already_used,       # CR-02
+            total_iterations_start=already_total,    # WR-01
+        )
 
     puzzle = generate_puzzle(seed, difficulty)
     engine = puzzle.create_engine()

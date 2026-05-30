@@ -87,9 +87,7 @@ def test_outcome_transitions_to_success(tmp_sessions_dir, mock_adapter):
 def test_outcome_transitions_to_failure(tmp_sessions_dir):
     """SESS-01: outcome is 'failure' when all 5 valid probes score is_correct=False.
 
-    After CR-01 fix, PROBE: AAAAA is the trivially-correct answer for any engine
-    (all-A cross-char offsets are 0, so it matches the state-layer target directly).
-    Use PROBE: ABCDE which scores 0/5 for seed=42/EASY and never triggers is_correct.
+    PROBE: ABCDE is not the ground truth for seed=42/EASY, so is_correct never fires.
     """
     from tests.conftest import FixedResponseAdapter
     adapter = FixedResponseAdapter("PROBE: ABCDE")

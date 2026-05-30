@@ -29,3 +29,4 @@ packages = ["cipherbench"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+asyncio_mode = "auto"

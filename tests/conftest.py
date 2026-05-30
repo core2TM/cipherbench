@@ -51,9 +51,8 @@ class FixedResponseAdapter:
         """Return the fixed response string regardless of message content."""
         return self.response
 
-    def check_token_budget(self, messages: list[dict]) -> tuple[int, int]:
-        """Return a dummy (used_tokens, max_tokens) tuple — no real token counting."""
-        return (100, 4096)
+    def check_token_budget(self, messages: list[dict]) -> None:
+        """No-op — mock does not perform real token counting."""
 
 
 @pytest.fixture

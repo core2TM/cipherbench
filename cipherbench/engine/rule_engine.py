@@ -23,10 +23,11 @@ Information boundary (RULE-04):
   local variable used only for score comparison, then discarded.
 
 Ground truth (PATTERNS.md Open Question 1, RESOLVED):
-  _ground_truth is a fixed reference string ("AAAAA" for output_length=5) set at
-  construction time.  score_attempt compares the guess against the per-round encoding
-  of this fixed reference via _encode_for_round(round_num).  The target ciphertext
-  changes each round; the underlying reference string does not.
+  _ground_truth is a random reference string seeded by rng at construction time.
+  Both the guess and the ground truth are encoded through identical layers (state +
+  cross-char) before comparison — symmetric encoding.  The correct answer is always
+  _ground_truth itself; the encoded target changes each round, but submitting _ground_truth
+  always produces is_correct=True.
 
 Private attribute convention (D-09, ASVS V4 note from RESEARCH.md):
   Single-underscore convention (_base_shifts, _k_list, …) is used rather than double-
@@ -49,6 +50,15 @@ from cipherbench.engine.layers import (
 )
 
 
+MAX_SCORE_ATTEMPTS: int = 5
+"""Maximum number of score_attempt calls allowed per RuleEngine instance (WR-04).
+
+This constant enforces the 5-attempt core mechanic at the engine level so that
+library callers using RuleEngine directly (without a session runner) cannot silently
+exceed the attempt budget.
+"""
+
+
 class RuleEngine:
     """Trusted oracle.  Holds cipher state privately.  Exposes score_attempt() only.
 
@@ -58,12 +68,13 @@ class RuleEngine:
     information boundary test suite, not name-mangling.
 
     Private attributes:
-      _base_shifts       : list[int] — per-position base shift values
-      _k_list            : list[int] — cross-character offset distances (D-03)
-      _state_change_rate : float     — round multiplier scaling factor (D-02)
-      _alphabet          : str       — character set in use
-      _ground_truth      : str       — fixed reference string for encoding
-      _round             : int       — current round counter (starts at 1)
+      _base_shifts          : list[int] — per-position base shift values
+      _k_list               : list[int] — cross-character offset distances (D-03)
+      _state_change_rate    : float     — round multiplier scaling factor (D-02)
+      _alphabet             : str       — character set in use
+      _ground_truth         : str       — fixed reference string for encoding
+      _round                : int       — current round counter (starts at 1)
+      _attempts_remaining   : int       — remaining score_attempt budget (WR-04)
 
     Never construct this class directly.  Use create_rule_engine(seed, difficulty)
     to obtain a fresh, properly seeded instance (D-10).
@@ -82,6 +93,7 @@ class RuleEngine:
         self._alphabet = difficulty.alphabet                  # private — D-09
         self._ground_truth = ground_truth                     # private — D-09
         self._round = 1                                       # private mutable state (starts at 1)
+        self._attempts_remaining: int = MAX_SCORE_ATTEMPTS   # WR-04: enforce attempt budget
 
     def score_attempt(self, guess: str) -> AttemptScore:
         """Validate the guess, encode the ground truth for the current round, return score.
@@ -115,6 +127,14 @@ class RuleEngine:
             If ``guess`` length does not match output_length, or if ``guess`` contains
             characters outside the configured alphabet.
         """
+        # --- Attempt budget enforcement (WR-04) ---
+        if self._attempts_remaining <= 0:
+            raise RuntimeError(
+                "Attempt budget exhausted: this RuleEngine instance allows "
+                f"at most {MAX_SCORE_ATTEMPTS} score_attempt calls."
+            )
+        self._attempts_remaining -= 1
+
         # --- Input validation (ASVS V5; T-03-02 mitigation) ---
         if len(guess) != len(self._ground_truth):
             raise ValueError(
@@ -128,8 +148,8 @@ class RuleEngine:
         round_num = self._round
         self._round += 1
 
-        # --- Encode guess through both layers; target is state-layer of ground truth ---
-        # Apply state layer to the guess (round-dependent shift)
+        # --- Symmetric encoding: both guess and ground truth go through identical layers ---
+        # Apply state layer then cross-char layer to the guess.
         shifted_guess = apply_state_layer(
             guess,
             self._base_shifts,
@@ -137,14 +157,11 @@ class RuleEngine:
             self._alphabet,
             self._state_change_rate,
         )
-        # Apply cross-char layer to the state-shifted guess using the original guess
-        # as plaintext source for offsets (CR-01 fix: cross-char acts on the probe,
-        # not on the constant ground_truth whose chars are all alphabet[0]).
         encoded_guess = apply_cross_char_layer_multi(
             shifted_guess, guess, self._k_list, self._alphabet
         )
-        # Target: state-layer encoding of ground truth (cross-char not applied to
-        # reference — ground_truth = alphabet[0]*n would make it a no-op anyway).
+        # Apply the same two layers to ground truth (symmetric with guess encoding).
+        # When guess == ground_truth both sides are identical, so score == max_score.
         shifted_target = apply_state_layer(
             self._ground_truth,
             self._base_shifts,
@@ -152,7 +169,9 @@ class RuleEngine:
             self._alphabet,
             self._state_change_rate,
         )
-        target_str = "".join(self._alphabet[i] for i in shifted_target)
+        target_str = apply_cross_char_layer_multi(
+            shifted_target, self._ground_truth, self._k_list, self._alphabet
+        )
         # Score encoded guess against target (ciphertext never returned to caller)
         score = count_correct(encoded_guess, target_str)
         return AttemptScore(
@@ -256,12 +275,10 @@ def create_rule_engine(seed: int, difficulty: Optional[DifficultyConfig] = None)
     # "Sample larger than population" ValueError (T-02-02-B mitigation).
     k_list = rng.sample(range(1, n), difficulty.cross_char_depth)
 
-    # Ground truth: fixed reference string ("AAAAA" for output_length=5).
-    # PATTERNS.md Open Question 1 resolved: _ground_truth is constant across rounds;
-    # the round-specific encoding is computed in _encode_for_round(round_num).
-    # The model's task is to submit the string that scores max_score for the current round,
-    # i.e. submit _encode_for_round(current_round) to achieve is_correct=True.
-    ground_truth = difficulty.alphabet[0] * n  # "A" * 5 = "AAAAA"
+    # Ground truth: random string drawn from this puzzle's seeded rng.
+    # Symmetric encoding: both guess and GT go through state + cross-char layers.
+    # Submitting GT itself always achieves is_correct=True regardless of round.
+    ground_truth = "".join(rng.choice(difficulty.alphabet) for _ in range(n))
 
     return RuleEngine(
         base_shifts=base_shifts,

@@ -54,9 +54,15 @@ def test_difficulty_config_short_alphabet_rejected():
 
 
 def test_difficulty_config_zero_length_rejected():
-    """output_length=0 must raise ValueError (output_length must be >= 1)."""
+    """output_length=0 must raise ValueError (minimum is 2)."""
     with pytest.raises(ValueError):
         DifficultyConfig(alphabet="AB", output_length=0)
+
+
+def test_difficulty_config_one_length_rejected():
+    """output_length=1 must raise ValueError (minimum is 2)."""
+    with pytest.raises(ValueError):
+        DifficultyConfig(alphabet="AB", output_length=1)
 
 
 def test_dataclasses_are_frozen_score():
