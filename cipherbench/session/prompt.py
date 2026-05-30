@@ -48,9 +48,11 @@ def build_system_prompt(alphabet: str, output_length: int, max_attempts: int = 5
         f"- The cipher produces a secret {output_length}-character string using "
         f"characters from the alphabet: {alphabet}\n"
         f"- You have exactly {max_attempts} probe attempts to gather information about the cipher.\n"
-        f"- After each probe, you will receive a score: the number of characters "
-        f"in the correct position (0 to {output_length}).\n"
-        f"- No information about which positions are correct is given — only the total count.\n"
+        f"- After each probe, you will receive two scores:\n"
+        f"  * Score: the number of characters in the correct position (0 to {output_length}).\n"
+        f"  * Correct Letters: the number of characters in your probe that appear anywhere\n"
+        f"    in the secret string, regardless of position (0 to {output_length}).\n"
+        f"- No information about which positions are correct is given — only the total counts.\n"
         f"- After all {max_attempts} probes, submit your final answer.\n\n"
         f"Format:\n"
         f"- Each probe must be submitted exactly as: PROBE: {'#' * output_length}\n"
@@ -89,13 +91,15 @@ def build_user_turn(attempt_num: int, attempts: list[dict], max_score: int) -> s
 
     # Build plain-text attempt history table (D-04: full history every turn)
     lines = ["Attempt history:", ""]
-    lines.append(f"{'#':<6}{'Probe':<10}{'Score':<10}")
-    lines.append("-" * 26)
+    lines.append(f"{'#':<6}{'Probe':<10}{'Score':<10}{'Correct Letters':<16}")
+    lines.append("-" * 42)
     for a in attempts:
         probe_str = a.get("probe") or "INVALID"
         score = a.get("score")
         score_str = f"{score}/{max_score}" if score is not None else "N/A"
-        lines.append(f"{a['attempt_num']:<6}{probe_str:<10}{score_str:<10}")
+        cc = a.get("correct_chars")
+        cc_str = str(cc) if cc is not None else "N/A"
+        lines.append(f"{a['attempt_num']:<6}{probe_str:<10}{score_str:<10}{cc_str:<16}")
 
     lines.append("")
     lines.append(f"Please submit probe number {attempt_num} (PROBE: XXXXX).")

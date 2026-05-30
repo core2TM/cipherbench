@@ -5,7 +5,7 @@ import json
 import random
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 runner_mod = pytest.importorskip("cipherbench.session.model_runner")
 create_model_session = runner_mod.create_model_session
@@ -49,25 +49,27 @@ def test_checkpoint_written_after_each_attempt(tmp_sessions_dir):
     """SESS-01: write_checkpoint is called with growing attempts list after each probe.
 
     Uses PROBE: ABCDE which scores 0/5 for seed=42/EASY across all rounds,
-    ensuring all 5 valid attempts run without early termination.
+    ensuring all MAX_ATTEMPTS valid attempts run without early termination.
+    Patches MAX_ATTEMPTS to 5 to keep the test fast and match original intent.
     """
     from tests.conftest import FixedResponseAdapter
     adapter = FixedResponseAdapter("PROBE: ABCDE")
-    runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
+    with patch("cipherbench.session.model_runner.MAX_ATTEMPTS", 5):
+        runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
 
-    checkpoint_sizes: list[int] = []
-    orig = runner._writer.write_checkpoint
+        checkpoint_sizes: list[int] = []
+        orig = runner._writer.write_checkpoint
 
-    def spy(record: dict) -> None:
-        checkpoint_sizes.append(len(record["attempts"]))
-        orig(record)
+        def spy(record: dict) -> None:
+            checkpoint_sizes.append(len(record["attempts"]))
+            orig(record)
 
-    runner._writer.write_checkpoint = spy
-    runner.run()
+        runner._writer.write_checkpoint = spy
+        runner.run()
 
-    # One checkpoint per valid probe (PROBE: ABCDE scores 0 for seed=42/EASY)
-    assert len(checkpoint_sizes) == 5
-    assert checkpoint_sizes == list(range(1, 6))
+        # One checkpoint per valid probe (PROBE: ABCDE scores 0 for seed=42/EASY)
+        assert len(checkpoint_sizes) == 5
+        assert checkpoint_sizes == list(range(1, 6))
 
 
 def test_outcome_transitions_to_success(tmp_sessions_dir, mock_adapter):
@@ -88,11 +90,13 @@ def test_outcome_transitions_to_failure(tmp_sessions_dir):
     """SESS-01: outcome is 'failure' when all 5 valid probes score is_correct=False.
 
     PROBE: ABCDE is not the ground truth for seed=42/EASY, so is_correct never fires.
+    Patches MAX_ATTEMPTS to 5 to keep the test fast and match original intent.
     """
     from tests.conftest import FixedResponseAdapter
     adapter = FixedResponseAdapter("PROBE: ABCDE")
-    runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
-    result = runner.run()
+    with patch("cipherbench.session.model_runner.MAX_ATTEMPTS", 5):
+        runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
+        result = runner.run()
 
     assert result["outcome"] == "failure"
     assert not any(a["is_correct"] for a in result["attempts"])
@@ -168,8 +172,9 @@ def test_extraction_failure_does_not_consume_attempt(tmp_sessions_dir):
             pass
 
     adapter = CountingAdapter()
-    runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
-    result = runner.run()
+    with patch("cipherbench.session.model_runner.MAX_ATTEMPTS", 5):
+        runner = create_model_session(seed=42, difficulty=EASY, adapter=adapter, output_dir=tmp_sessions_dir)
+        result = runner.run()
 
     valid = [a for a in result["attempts"] if not a["extraction_failed"]]
     failed = [a for a in result["attempts"] if a["extraction_failed"]]

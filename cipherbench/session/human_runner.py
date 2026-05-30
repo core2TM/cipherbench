@@ -81,11 +81,14 @@ def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
     table.add_column("#", style="dim", width=4)
     table.add_column("Probe", min_width=8)
     table.add_column("Score", min_width=8)
+    table.add_column("Correct Letters", min_width=14)
 
     for a in attempts:
         probe_str = a.get("probe") or "INVALID"
         score = a.get("score")
         is_correct = a.get("is_correct", False)
+        cc = a.get("correct_chars")
+        cc_str = str(cc) if cc is not None else "N/A"
 
         if score is None:
             score_str = "N/A"
@@ -100,7 +103,7 @@ def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
             score_str = f"[red]{score}/{max_score}[/red]"
             row_style = "red"
 
-        table.add_row(str(a["attempt_num"]), probe_str, score_str, style=row_style if not is_correct else None)
+        table.add_row(str(a["attempt_num"]), probe_str, score_str, cc_str, style=row_style if not is_correct else None)
 
     _console.print(table)
 
@@ -222,6 +225,7 @@ class HumanSessionRunner:
                 "score": attempt_score.score,
                 "max_score": max_score,
                 "is_correct": attempt_score.is_correct,
+                "correct_chars": attempt_score.correct_chars,
                 "raw_response": None,  # D-08: always None for human sessions
                 "extraction_failed": False,
             }

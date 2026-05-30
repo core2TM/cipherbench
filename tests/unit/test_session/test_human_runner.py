@@ -28,8 +28,10 @@ def test_human_session_json_schema_matches_model(tmp_sessions_dir):
     """
     # EASY alphabet is "ABCDEFGHIJ", output_length=5
     # Supply 5 valid probes + final answer prompt
+    # Patch MAX_ATTEMPTS to 5 so the loop stops after 5 probes (matching mock data)
     probe_responses = ["ABCDE", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses):
+    with patch("typer.prompt", side_effect=probe_responses), \
+         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
         runner = create_human_session(
             seed=42,
             difficulty=EASY,
@@ -78,7 +80,8 @@ def test_human_runner_rejects_invalid_length_input(tmp_sessions_dir):
     """
     # First prompt: "AB" (invalid, too short), then 5 valid probes + final answer
     probe_responses = ["AB", "ABCDE", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses):
+    with patch("typer.prompt", side_effect=probe_responses), \
+         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
         runner = create_human_session(
             seed=42,
             difficulty=EASY,
@@ -114,7 +117,8 @@ def test_human_runner_rejects_chars_outside_alphabet(tmp_sessions_dir):
     # ABCDK: K is outside EASY alphabet "ABCDEFGHIJ"
     # Then provide enough valid responses to complete the session
     probe_responses = ["ABCDK", "ABCDA", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses):
+    with patch("typer.prompt", side_effect=probe_responses), \
+         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
         runner = create_human_session(
             seed=42,
             difficulty=EASY,
