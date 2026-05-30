@@ -12,31 +12,31 @@ from cipherbench.types import AttemptScore, DifficultyConfig
 
 def test_attempt_score_valid():
     """A score below max_score with is_correct=False constructs successfully."""
-    s = AttemptScore(score=3, max_score=5, is_correct=False)
+    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
     assert s.score == 3
 
 
 def test_attempt_score_correct_flag_consistency():
     """score==max_score with is_correct=False must raise ValueError (D-03)."""
     with pytest.raises(ValueError):
-        AttemptScore(score=5, max_score=5, is_correct=False)
+        AttemptScore(score=5, max_score=5, is_correct=False, correct_chars=3)
 
 
 def test_attempt_score_out_of_range():
     """score > max_score must raise ValueError (D-02 range enforcement)."""
     with pytest.raises(ValueError):
-        AttemptScore(score=6, max_score=5, is_correct=False)
+        AttemptScore(score=6, max_score=5, is_correct=False, correct_chars=0)
 
 
 def test_attempt_score_score_zero_valid():
     """score=0 with is_correct=False is a valid construction (D-02: 0..output_length)."""
-    s = AttemptScore(score=0, max_score=5, is_correct=False)
+    s = AttemptScore(score=0, max_score=5, is_correct=False, correct_chars=0)
     assert s.score == 0
 
 
 def test_attempt_score_perfect_correct():
     """score==max_score with is_correct=True constructs and is_correct==True (D-03)."""
-    s = AttemptScore(score=5, max_score=5, is_correct=True)
+    s = AttemptScore(score=5, max_score=5, is_correct=True, correct_chars=5)
     assert s.is_correct is True
 
 
@@ -68,7 +68,7 @@ def test_difficulty_config_one_length_rejected():
 def test_dataclasses_are_frozen_score():
     """Mutating AttemptScore.score after construction raises FrozenInstanceError (D-09)."""
     from dataclasses import FrozenInstanceError
-    s = AttemptScore(score=3, max_score=5, is_correct=False)
+    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
     with pytest.raises(FrozenInstanceError):
         s.score = 4  # type: ignore[misc]
 
@@ -87,7 +87,7 @@ def test_attempt_score_no_ciphertext_field():
     The information boundary requires that AttemptScore contains only aggregate
     score data — never the cipher key, ground-truth ciphertext, or per-position shifts.
     """
-    s = AttemptScore(score=3, max_score=5, is_correct=False)
+    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
     assert not hasattr(s, "ciphertext"), "AttemptScore must not have a 'ciphertext' field"
     assert not hasattr(s, "key"), "AttemptScore must not have a 'key' field"
     assert not hasattr(s, "shifts"), "AttemptScore must not have a 'shifts' field"

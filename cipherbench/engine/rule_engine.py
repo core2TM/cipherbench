@@ -47,6 +47,7 @@ from cipherbench.engine.layers import (
     apply_state_layer,
     apply_cross_char_layer_multi,
     count_correct,
+    count_chars_present,
 )
 
 
@@ -174,10 +175,13 @@ class RuleEngine:
         )
         # Score encoded guess against target (ciphertext never returned to caller)
         score = count_correct(encoded_guess, target_str)
+        # Raw-string character presence hint (position-independent, pre-encoding)
+        chars_present = count_chars_present(guess, self._ground_truth)
         return AttemptScore(
             score=score,
             max_score=len(guess),
             is_correct=(score == len(guess)),
+            correct_chars=chars_present,
         )
 
     def _encode_for_round(self, round_num: int) -> str:

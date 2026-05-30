@@ -75,11 +75,16 @@ class AttemptScore:
     is_correct : bool
         True iff score == max_score (exact match, binary). D-03.
         Must be consistent with score — a mismatch raises ValueError.
+    correct_chars : int
+        Number of characters in ``guess`` that appear anywhere in the ground truth
+        (multiset intersection — independent of position). Display/hint only; not
+        used in efficiency score calculation.
     """
 
     score: int
     max_score: int
     is_correct: bool
+    correct_chars: int
 
     def __post_init__(self) -> None:
         if not (0 <= self.score <= self.max_score):
@@ -88,3 +93,7 @@ class AttemptScore:
             )
         if self.is_correct != (self.score == self.max_score):
             raise ValueError("is_correct must match score == max_score")
+        if not (0 <= self.correct_chars <= self.max_score):
+            raise ValueError(
+                f"correct_chars {self.correct_chars} out of range 0..{self.max_score}"
+            )

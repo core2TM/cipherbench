@@ -11,7 +11,7 @@ Canonical regression tests from CONTEXT.md D-07:
 """
 
 import pytest
-from cipherbench.engine.layers import apply_state_layer, apply_cross_char_layer, count_correct, apply_cross_char_layer_multi
+from cipherbench.engine.layers import apply_state_layer, apply_cross_char_layer, count_correct, apply_cross_char_layer_multi, count_chars_present
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -249,3 +249,44 @@ def test_multi_accumulates_additively():
     """
     result = apply_cross_char_layer_multi([0, 0, 0], "ABC", [1, 2], ALPHABET)
     assert result == "DCB"
+
+
+# ---------------------------------------------------------------------------
+# count_chars_present tests
+# ---------------------------------------------------------------------------
+
+
+def test_count_chars_present_exact_match():
+    """Same string: all characters present → returns len(string)."""
+    assert count_chars_present("ABCDE", "ABCDE") == 5
+
+
+def test_count_chars_present_no_overlap():
+    """Completely disjoint character sets → 0."""
+    assert count_chars_present("AAAAA", "BBBBB") == 0
+
+
+def test_count_chars_present_multiset_cap():
+    """Multiset intersection caps at ground_truth count.
+
+    guess="AAABB" has 3 A's, ground_truth="AACCC" has 2 A's → min(3,2)=2.
+    B not in ground_truth → 0. Total: 2.
+    """
+    assert count_chars_present("AAABB", "AACCC") == 2
+
+
+def test_count_chars_present_position_independent():
+    """Characters in wrong positions still count — full multiset intersection."""
+    # "EDCBA" and "ABCDE" share the same character set, all 5 chars match via intersection.
+    assert count_chars_present("EDCBA", "ABCDE") == 5
+
+
+def test_count_chars_present_partial():
+    """Only one shared character in guess and ground_truth → 1."""
+    assert count_chars_present("ABCDE", "AXXXX") == 1
+
+
+def test_count_chars_present_length_mismatch_raises():
+    """Lengths must match — raises ValueError otherwise."""
+    with pytest.raises(ValueError):
+        count_chars_present("AB", "ABC")

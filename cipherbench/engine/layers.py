@@ -198,3 +198,43 @@ def count_correct(guess: str, ciphertext: str) -> int:
             f"guess length {len(guess)} != ciphertext length {len(ciphertext)}"
         )
     return sum(g == c for g, c in zip(guess, ciphertext))
+
+
+def count_chars_present(guess: str, ground_truth: str) -> int:
+    """Count characters in guess that appear anywhere in ground_truth (multiset intersection).
+
+    Position-independent: a character counts if it appears in the ground truth regardless
+    of where it sits.  The count is capped by how many times the character appears in the
+    ground truth (multiset semantics — guessing 'AAA' against a ground truth with one 'A'
+    counts as 1, not 3).
+
+    This is a raw-string comparison: both ``guess`` and ``ground_truth`` must be the
+    pre-encoding plaintext strings, not their round-encoded representations.
+
+    Parameters
+    ----------
+    guess : str
+        The probe string submitted by the player/model.
+    ground_truth : str
+        The fixed reference string used to seed the engine.
+        Must have the same length as ``guess``.
+
+    Returns
+    -------
+    int
+        Number of characters in ``guess`` that appear in ``ground_truth`` under
+        multiset intersection semantics (0..len(guess)).
+
+    Raises
+    ------
+    ValueError
+        If ``len(guess) != len(ground_truth)``.
+    """
+    if len(guess) != len(ground_truth):
+        raise ValueError(
+            f"guess length {len(guess)} != ground_truth length {len(ground_truth)}"
+        )
+    total = 0
+    for c in set(guess):
+        total += min(guess.count(c), ground_truth.count(c))
+    return total
