@@ -50,7 +50,7 @@ from cipherbench.engine.layers import (
 )
 
 
-MAX_SCORE_ATTEMPTS: int = 5
+MAX_SCORE_ATTEMPTS: int = 15
 """Maximum number of score_attempt calls allowed per RuleEngine instance (WR-04).
 
 This constant enforces the 5-attempt core mechanic at the engine level so that

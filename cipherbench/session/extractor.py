@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 
-MAX_ATTEMPTS: int = 5
+MAX_ATTEMPTS: int = 15
 """Maximum valid probe attempts per session (D-05 / RESEARCH.md open question 2).
 
 Extraction failures do NOT consume an attempt count.  A hard cap of 2 * MAX_ATTEMPTS

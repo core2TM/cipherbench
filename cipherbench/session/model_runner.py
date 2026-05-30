@@ -40,7 +40,7 @@ from cipherbench.session.writer import SessionWriter, slugify_model, make_sessio
 
 logger = logging.getLogger(__name__)
 
-MAX_ATTEMPTS: int = 5
+MAX_ATTEMPTS: int = 15
 MAX_TOTAL_ITERATIONS: int = 2 * MAX_ATTEMPTS  # adversarial loop cap (T-03-03-02)
 
 

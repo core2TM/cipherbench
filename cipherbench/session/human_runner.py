@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 _console = Console()
 
-MAX_ATTEMPTS: int = 5  # Fixed at 5 — a core mechanic, not configurable in v1
+MAX_ATTEMPTS: int = 15  # Fixed at 15 — a core mechanic, not configurable in v1
 
 
 # ---------------------------------------------------------------------------

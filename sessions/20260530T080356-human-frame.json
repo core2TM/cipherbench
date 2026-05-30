@@ -1,0 +1,14 @@
+{
+  "session_id": "20260530T080356-human-frame",
+  "runner_type": "human",
+  "model": null,
+  "player_name": "frame",
+  "seed": 1468728622,
+  "difficulty": "easy",
+  "puzzle_hash": "74276da43dcdc25c0e848aa9bac3f656c9e0d90623c0001c7a4ee267763f93cb",
+  "outcome": "in_progress",
+  "final_answer": null,
+  "attempts": [],
+  "created_at": "2026-05-30T08:03:56.189305Z",
+  "completed_at": null
+}

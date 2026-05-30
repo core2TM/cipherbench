@@ -26,7 +26,7 @@ from typing import Optional, TypedDict
 
 logger = logging.getLogger(__name__)
 
-MAX_ATTEMPTS: int = 5  # Fixed core mechanic — not configurable in v1 (D-06)
+MAX_ATTEMPTS: int = 15  # Fixed core mechanic — not configurable in v1 (D-06)
 TERMINAL_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
 
 
