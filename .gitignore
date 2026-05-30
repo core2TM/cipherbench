@@ -1,4 +1,5 @@
 __pycache__/
+  #python
   *.py[cod]
   *.pyo
   *.pyd
@@ -10,7 +11,7 @@ __pycache__/
 
   # uv
   .venv/
-  uv.lock          # commit this if you want reproducible installs; omit to leave it optional
+  uv.lock
 
   # Testing
   .pytest_cache/
