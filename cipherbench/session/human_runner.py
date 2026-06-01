@@ -20,8 +20,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from cipherbench.engine.layers import apply_cipher
 from cipherbench.puzzle import (
     ALPHABET,
+    LEVEL_CONFIGS,
     OUTPUT_LENGTH,
     create_engine_for_level,
     get_ground_truth,
@@ -202,9 +204,16 @@ class HumanSessionRunner:
 
             raw_ans_clean = raw_ans if _validate_probe(raw_ans, alphabet, output_length) else None
 
+        answer_is_correct = False
+        if raw_ans_clean:
+            _, _, substitution = LEVEL_CONFIGS[self._level]
+            shifted = apply_cipher(raw_ans_clean, ALPHABET, substitution)
+            encoded = "".join(ALPHABET[i] for i in shifted)
+            answer_is_correct = (encoded == self._ground_truth)
+
         outcome = (
             "success"
-            if any(a["is_correct"] for a in self._session_record["attempts"])
+            if any(a["is_correct"] for a in self._session_record["attempts"]) or answer_is_correct
             else "failure"
         )
         self._writer.finalize(self._session_record, outcome, final_answer=raw_ans_clean)
