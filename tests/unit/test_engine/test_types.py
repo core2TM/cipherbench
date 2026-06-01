@@ -117,31 +117,6 @@ def test_difficulty_config_state_change_rate_invalid_negative():
         DifficultyConfig(state_change_rate=-0.5)
 
 
-# --- DifficultyConfig: cross_char_depth tests (D-03) ---
-
-def test_difficulty_config_cross_char_depth_default():
-    """DifficultyConfig().cross_char_depth defaults to 1 (D-03)."""
-    assert DifficultyConfig().cross_char_depth == 1
-
-
-def test_difficulty_config_cross_char_depth_max_valid():
-    """cross_char_depth=4 with output_length=5 is valid (4 == output_length - 1)."""
-    d = DifficultyConfig(cross_char_depth=4, output_length=5)
-    assert d.cross_char_depth == 4
-
-
-def test_difficulty_config_cross_char_depth_exceeds_max():
-    """cross_char_depth=5 with output_length=5 raises ValueError (max is output_length-1=4)."""
-    with pytest.raises(ValueError):
-        DifficultyConfig(cross_char_depth=5, output_length=5)
-
-
-def test_difficulty_config_cross_char_depth_zero():
-    """cross_char_depth=0 raises ValueError (minimum is 1)."""
-    with pytest.raises(ValueError):
-        DifficultyConfig(cross_char_depth=0)
-
-
 def test_difficulty_config_defaults_backward_compat():
     """DifficultyConfig() still has alphabet=A-Z and output_length=5 (existing behavior unchanged)."""
     d = DifficultyConfig()
@@ -149,21 +124,3 @@ def test_difficulty_config_defaults_backward_compat():
     assert d.output_length == 5
 
 
-# --- AttemptScore: encoded_output field tests ---
-
-def test_attempt_score_encoded_output_default_is_none():
-    """AttemptScore.encoded_output defaults to None (no extra arg required)."""
-    s = AttemptScore(score=3, max_score=5, is_correct=False)
-    assert s.encoded_output is None
-
-
-def test_attempt_score_encoded_output_stores_value():
-    """AttemptScore with encoded_output='BCDEF' stores that value."""
-    s = AttemptScore(score=3, max_score=5, is_correct=False, encoded_output="BCDEF")
-    assert s.encoded_output == "BCDEF"
-
-
-def test_attempt_score_encoded_output_not_validated_in_post_init():
-    """encoded_output is informational — no validation in __post_init__; arbitrary str allowed."""
-    s = AttemptScore(score=3, max_score=5, is_correct=False, encoded_output="XYZ")
-    assert s.encoded_output == "XYZ"

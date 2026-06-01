@@ -88,20 +88,16 @@ def test_factory_produces_fresh_instances():
     assert result_a == result_b
 
 
-def test_state_layer_changes_target_across_rounds():
-    """The encoded target must differ between round 1 and round 2 (RULE-01 state layer active).
+def test_state_layer_is_fixed_across_rounds():
+    """The encoded target is the same every round — encoding is round-independent.
 
-    This is a white-box test that calls the private _encode_for_round method directly
-    to verify the state layer is active without going through score_attempt.
-    Uses seed=42 which produces non-trivial base shifts (all >= 1, never 0).
+    Same probe always produces the same encoded output regardless of round number.
     """
     engine = create_rule_engine(seed=42, difficulty=DifficultyConfig())
-    encoded_round_1 = engine._encode_for_round(1)
-    encoded_round_2 = engine._encode_for_round(2)
-    # With linear multiplier: round 2 shifts are 2× round 1. For non-zero base_shifts
-    # this produces a different ciphertext at every round.
-    assert encoded_round_1 != encoded_round_2, (
-        "State layer not active: round 1 and round 2 produced identical encoded targets"
+    encoded_1 = engine._encode_for_round(1)
+    encoded_2 = engine._encode_for_round(2)
+    assert encoded_1 == encoded_2, (
+        "Encoding should be round-independent: same output regardless of round"
     )
 
 
@@ -135,55 +131,3 @@ def test_instance_round_counter_is_independent():
     )
 
 
-# ---------------------------------------------------------------------------
-# show_encoding parameter tests — Task 1 TDD (w7g)
-# ---------------------------------------------------------------------------
-
-
-def test_score_attempt_default_encoded_output_is_none():
-    """score_attempt() with default args returns AttemptScore where encoded_output is None."""
-    engine = create_rule_engine(seed=42)
-    result = engine.score_attempt("AAAAA")
-    assert result.encoded_output is None
-
-
-def test_score_attempt_show_encoding_false_encoded_output_is_none():
-    """score_attempt(..., show_encoding=False) explicitly keeps encoded_output as None."""
-    engine = create_rule_engine(seed=42)
-    result = engine.score_attempt("AAAAA", show_encoding=False)
-    assert result.encoded_output is None
-
-
-def test_score_attempt_show_encoding_true_returns_string():
-    """score_attempt("AAAAA", show_encoding=True) returns encoded_output as a non-None string."""
-    engine = create_rule_engine(seed=42)
-    result = engine.score_attempt("AAAAA", show_encoding=True)
-    assert result.encoded_output is not None
-    assert isinstance(result.encoded_output, str)
-
-
-def test_score_attempt_show_encoding_true_correct_length():
-    """score_attempt show_encoding=True returns encoded_output with length equal to output_length."""
-    engine = create_rule_engine(seed=42)
-    result = engine.score_attempt("AAAAA", show_encoding=True)
-    assert len(result.encoded_output) == 5
-
-
-def test_score_attempt_show_encoding_true_alphabet_chars():
-    """score_attempt show_encoding=True: encoded_output chars are in the configured alphabet."""
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    engine = create_rule_engine(seed=42)
-    result = engine.score_attempt("AAAAA", show_encoding=True)
-    assert all(c in alphabet for c in result.encoded_output)
-
-
-def test_score_attempt_show_encoding_does_not_change_score():
-    """show_encoding=True must not change score or is_correct vs show_encoding=False."""
-    engine_a = create_rule_engine(seed=42)
-    result_hidden = engine_a.score_attempt("AAAAA", show_encoding=False)
-
-    engine_b = create_rule_engine(seed=42)
-    result_shown = engine_b.score_attempt("AAAAA", show_encoding=True)
-
-    assert result_hidden.score == result_shown.score
-    assert result_hidden.is_correct == result_shown.is_correct

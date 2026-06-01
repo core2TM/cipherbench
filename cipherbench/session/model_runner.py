@@ -1,112 +1,91 @@
-"""CipherBench model session runner — probe-attempt loop for LLM sessions (SESS-01, SESS-04).
+"""CipherBench model session runner — probe-attempt loop for LLM sessions.
 
 Public names:
   ModelSessionRunner    — drives the attempt loop; call .run() -> dict
-  create_model_session  — factory: builds puzzle, engine, writer, and runner
-
-Design decisions:
-  D-04  Full attempt history in every user turn (no per-position breakdown)
-  D-05  Extraction failures recorded but do NOT consume valid-attempt budget
-  D-08  Attempt entry structure: attempt_num, probe, score, max_score, is_correct,
-        raw_response, extraction_failed
-  D-09  Outcome literals: 'in_progress' | 'success' | 'failure' | 'rate_limited'
-  D-11  Top-level session schema — all fields defined in schema.py
-  D-16  Hybrid rate-limit: adapter retries internally (tenacity); runner catches the
-        re-raised RateLimitError and writes outcome='rate_limited'
-  D-17  Inline checkpoint: write_checkpoint after every attempt (valid or invalid)
-  D-18  Resume detection: scan output_dir for rate_limited sessions on same model+seed
+  create_model_session  — factory: builds engine, writer, and runner
 
 Security:
-  T-03-03-02  MAX_TOTAL_ITERATIONS = 2 * MAX_ATTEMPTS hard cap prevents an infinite
-              loop when the model never produces a valid PROBE: response
+  MAX_TOTAL_ITERATIONS = 2 * MAX_ATTEMPTS hard cap prevents an infinite
+  loop when the model never produces a valid PROBE: response.
 """
 from __future__ import annotations
 
 import glob as _glob
 import json
 import logging
-import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import litellm
 
-from cipherbench.puzzle import generate_puzzle, get_tier
-from cipherbench.types import DifficultyConfig
+from cipherbench.puzzle import (
+    ALPHABET,
+    OUTPUT_LENGTH,
+    create_engine_for_level,
+    get_ground_truth,
+    get_max_attempts,
+)
 from cipherbench.session.extractor import extract_probe, extract_answer
 from cipherbench.session.prompt import build_system_prompt, build_user_turn
 from cipherbench.session.writer import SessionWriter, slugify_model, make_session_id
 
 logger = logging.getLogger(__name__)
 
-MAX_ATTEMPTS: int = 15
-MAX_TOTAL_ITERATIONS: int = 2 * MAX_ATTEMPTS  # adversarial loop cap (T-03-03-02)
-
 
 class ModelSessionRunner:
-    """Drives the probe-attempt loop for a single LLM benchmark session (SESS-01).
+    """Drives the probe-attempt loop for a single LLM benchmark session.
 
     Do not instantiate directly — use :func:`create_model_session`.
-
-    Private attributes (single-underscore convention, D-09):
-      _puzzle         : Puzzle
-      _engine         : RuleEngine  — fresh per session, never reused (D-05 from Phase 2)
-      _adapter        : any adapter satisfying complete(messages)->str interface (ADAPT-01)
-      _writer         : SessionWriter
-      _session_record : dict        — the mutable session state; mutated in-place by run()
     """
 
     def __init__(
         self,
-        puzzle,
+        level: int,
+        ground_truth: str,
         engine,
         adapter,
         writer: SessionWriter,
         session_record: dict,
+        max_attempts: int = 5,
         valid_attempts_start: int = 0,
         total_iterations_start: int = 0,
     ) -> None:
-        self._puzzle = puzzle
+        self._level = level
+        self._ground_truth = ground_truth
         self._engine = engine
         self._adapter = adapter
         self._writer = writer
         self._session_record = session_record
-        self._valid_attempts_start = valid_attempts_start  # CR-02: restored budget for resume
-        self._total_iterations_start = total_iterations_start  # WR-01: restored iteration cap for resume
+        self._max_attempts = max_attempts
+        self._valid_attempts_start = valid_attempts_start
+        self._total_iterations_start = total_iterations_start
 
     def run(self) -> dict:
         """Execute the probe-attempt loop and return the final session record dict.
 
-        Loop invariants
-        ---------------
-        - valid_attempts counts only attempts where extraction_failed=False (D-05)
-        - total_iterations counts every iteration; capped at MAX_TOTAL_ITERATIONS (T-03-03-02)
-        - write_checkpoint is called after every attempt, valid or not (D-17)
-        - litellm.RateLimitError (re-raised by tenacity) causes immediate finalize + return (D-16)
-
         Returns
         -------
         dict
-            The final session_record with all D-11 fields.
+            The final session_record with all fields.
         """
-        alphabet = self._puzzle.difficulty.alphabet
-        output_length = self._puzzle.difficulty.output_length
+        alphabet = ALPHABET
+        output_length = OUTPUT_LENGTH
         max_score = output_length
 
-        system_prompt = build_system_prompt(alphabet, output_length)
+        system_prompt = build_system_prompt(alphabet, output_length, self._ground_truth, self._max_attempts)
 
-        # Token budget advisory (ADAPT-02) — warn only, never abort
         try:
             self._adapter.check_token_budget([{"role": "system", "content": system_prompt}])
         except Exception:
             logger.warning("Token budget check failed — continuing session")
 
         messages: list[dict] = [{"role": "system", "content": system_prompt}]
-        valid_attempts: int = self._valid_attempts_start  # CR-02: start from restored budget
-        total_iterations: int = self._total_iterations_start  # WR-01: start from restored iteration count
+        valid_attempts: int = self._valid_attempts_start
+        total_iterations: int = self._total_iterations_start
+        max_total_iterations = 2 * self._max_attempts
 
-        while valid_attempts < MAX_ATTEMPTS and total_iterations < MAX_TOTAL_ITERATIONS:
+        while valid_attempts < self._max_attempts and total_iterations < max_total_iterations:
             total_iterations += 1
 
             user_turn = build_user_turn(
@@ -127,10 +106,10 @@ class ModelSessionRunner:
             probe = extract_probe(raw, alphabet, output_length)
 
             if probe is None:
-                # D-05: extraction failure — record entry, do NOT increment valid_attempts
                 entry: dict = {
                     "attempt_num": len(self._session_record["attempts"]) + 1,
                     "probe": None,
+                    "encoded_output": None,
                     "score": None,
                     "max_score": max_score,
                     "is_correct": False,
@@ -145,6 +124,7 @@ class ModelSessionRunner:
             entry = {
                 "attempt_num": len(self._session_record["attempts"]) + 1,
                 "probe": probe,
+                "encoded_output": attempt_score.encoded_output,
                 "score": attempt_score.score,
                 "max_score": attempt_score.max_score,
                 "is_correct": attempt_score.is_correct,
@@ -158,7 +138,7 @@ class ModelSessionRunner:
             if attempt_score.is_correct:
                 break
 
-        # Final-answer step: only when no correct probe was found (D-02)
+        # Final-answer step: only when no correct probe was found
         final_answer: Optional[str] = None
         if not any(a["is_correct"] for a in self._session_record["attempts"]):
             final_prompt = (
@@ -184,72 +164,60 @@ class ModelSessionRunner:
 
 
 def create_model_session(
-    seed: Optional[int],
-    difficulty: DifficultyConfig,
+    level: int,
     adapter,
     output_dir: Path | str,
-) -> ModelSessionRunner:
-    """Build a fresh :class:`ModelSessionRunner` for a new benchmark session.
+) -> "ModelSessionRunner":
+    """Build a fresh ModelSessionRunner for a new benchmark session.
 
     Parameters
     ----------
-    seed : int or None
-        RNG seed for puzzle generation.  ``None`` generates a random seed using
-        an isolated ``random.Random()`` instance (never touches global state, D-11).
-    difficulty : DifficultyConfig
-        Difficulty preset (EASY, MEDIUM, HARD, or custom).
+    level : int
+        Puzzle level: 1, 2, or 3.
     adapter :
-        Any object satisfying the adapter interface: ``complete(messages)->str``
-        and ``check_token_budget(messages)``.
+        Any object satisfying the adapter interface: complete(messages)->str
+        and check_token_budget(messages).
     output_dir : Path or str
-        Directory for session JSON files (D-10).
+        Directory for session JSON files.
 
     Returns
     -------
     ModelSessionRunner
-        A fully initialised runner with the session ``in_progress`` file already
-        written to disk (D-17).
+        A fully initialised runner with the session 'in_progress' file already
+        written to disk.
     """
     output_dir = Path(output_dir)
-
-    # RNG isolation: never call global random.seed() or random.randint() (D-11)
-    if seed is None:
-        seed = random.Random().randint(0, 2**32 - 1)
+    ground_truth = get_ground_truth(level)
+    max_attempts = get_max_attempts(level)
 
     model_str: str = getattr(adapter, "_model", None) or "unknown"
     model_slug = slugify_model(model_str)
 
-    # D-18: auto-detect rate_limited sessions for same model+seed+difficulty and resume
-    existing = _find_resumable_session(output_dir, model_slug, seed, get_tier(difficulty))
+    # Auto-detect rate_limited sessions for same model+level and resume
+    existing = _find_resumable_session(output_dir, model_slug, level)
     if existing is not None:
         logger.info(
             "Resuming rate_limited session %s from %d recorded attempt(s)",
             existing["session_id"],
             len(existing["attempts"]),
         )
-        puzzle = generate_puzzle(seed, difficulty)
-        engine = puzzle.create_engine()
-        # Replay engine state to match already-scored attempts.
-        # score_attempt decrements _attempts_remaining during replay, which is correct:
-        # after replaying `already_used` probes, _attempts_remaining = 5 - already_used,
-        # leaving exactly the right budget for the resumed session (WR-04).
+        engine = create_engine_for_level(level)
         already_used = 0
         for attempt in existing["attempts"]:
             if not attempt.get("extraction_failed") and attempt.get("probe"):
                 engine.score_attempt(attempt["probe"])
-                already_used += 1  # CR-02: count valid attempts consumed before rate-limit
-        already_total = len(existing["attempts"])  # WR-01: all entries (valid + failed)
+                already_used += 1
+        already_total = len(existing["attempts"])
         writer = SessionWriter(output_dir, existing["session_id"])
-        # Reset outcome to in_progress so the loop continues
         existing["outcome"] = "in_progress"
         return ModelSessionRunner(
-            puzzle, engine, adapter, writer, existing,
-            valid_attempts_start=already_used,       # CR-02
-            total_iterations_start=already_total,    # WR-01
+            level, ground_truth, engine, adapter, writer, existing,
+            max_attempts=max_attempts,
+            valid_attempts_start=already_used,
+            total_iterations_start=already_total,
         )
 
-    puzzle = generate_puzzle(seed, difficulty)
-    engine = puzzle.create_engine()
+    engine = create_engine_for_level(level)
     session_id = make_session_id(model_slug, output_dir)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -258,9 +226,8 @@ def create_model_session(
         "runner_type": "model",
         "model": model_str,
         "player_name": None,
-        "seed": seed,
-        "difficulty": get_tier(difficulty),
-        "puzzle_hash": puzzle.puzzle_hash,
+        "level": level,
+        "ground_truth": ground_truth,
         "outcome": "in_progress",
         "final_answer": None,
         "attempts": [],
@@ -271,31 +238,26 @@ def create_model_session(
     writer = SessionWriter(output_dir, session_id)
     writer.init_session(session_record)
 
-    return ModelSessionRunner(puzzle, engine, adapter, writer, session_record)
+    return ModelSessionRunner(level, ground_truth, engine, adapter, writer, session_record, max_attempts=max_attempts)
 
 
 def _find_resumable_session(
-    output_dir: Path, model_slug: str, seed: int, difficulty_tier: str
+    output_dir: Path, model_slug: str, level: int
 ) -> Optional[dict]:
-    """Scan *output_dir* for a ``rate_limited`` session matching *model_slug* + *seed* + *difficulty*.
+    """Scan output_dir for a rate_limited session matching model_slug + level.
 
-    Returns the parsed session dict if found, or ``None`` if no match.
+    Returns the parsed session dict if found, or None if no match.
     Silently skips files that cannot be parsed.
-
-    CR-04: difficulty_tier must match to prevent resuming a session from a different
-    difficulty tier, which would replay the prior probes through a different engine
-    (different base_shifts, state_change_rate) and produce inconsistent scores.
     """
     if not output_dir.exists():
         return None
-    for json_file in output_dir.glob(f"*-{_glob.escape(model_slug)}.json"):  # WR-02: escape glob metacharacters
+    for json_file in output_dir.glob(f"*-{_glob.escape(model_slug)}.json"):
         try:
             with json_file.open(encoding="utf-8") as f:
                 data = json.load(f)
             if (
                 data.get("outcome") == "rate_limited"
-                and data.get("seed") == seed
-                and data.get("difficulty") == difficulty_tier  # CR-04: must match difficulty
+                and data.get("level") == level
             ):
                 return data
         except (json.JSONDecodeError, OSError):

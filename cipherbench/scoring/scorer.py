@@ -26,7 +26,7 @@ from typing import Optional, TypedDict
 
 logger = logging.getLogger(__name__)
 
-MAX_ATTEMPTS: int = 15  # Fixed core mechanic — not configurable in v1 (D-06)
+MAX_ATTEMPTS: int = 5
 TERMINAL_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
 
 
@@ -100,9 +100,11 @@ def load_sessions(
         if model is not None and data.get("model") != model:
             continue
 
-        # D-05: filter by difficulty
-        if difficulty is not None and data.get("difficulty") != difficulty:
-            continue
+        # Filter by level (stored as int) or legacy difficulty field
+        if difficulty is not None:
+            session_level = str(data.get("level", data.get("difficulty", "")))
+            if session_level != difficulty:
+                continue
 
         sessions.append(data)
 
@@ -110,7 +112,7 @@ def load_sessions(
 
 
 def efficiency_score(session: dict) -> float:
-    """SCORE-02: success * (max_attempts - attempts_used + 1) / max_attempts.
+    """SCORE-02: success * (MAX_ATTEMPTS - attempts_used + 1) / MAX_ATTEMPTS.
 
     attempts_used = count of attempts where extraction_failed=False (D-06).
     Division by zero is impossible: MAX_ATTEMPTS is a fixed positive integer.
@@ -135,13 +137,13 @@ def success_rate(sessions: list[dict]) -> float:
 
 
 def group_by_difficulty(sessions: list[dict]) -> dict[str, list[dict]]:
-    """SCORE-04: bucket sessions by difficulty tier string ('easy'|'medium'|'hard').
+    """Bucket sessions by level (1|2|3) or legacy difficulty tier.
 
-    Unknown tiers are stored under their literal string value.
+    Uses the 'level' field when present; falls back to 'difficulty' for legacy sessions.
     """
     groups: dict[str, list[dict]] = {}
     for s in sessions:
-        tier = s.get("difficulty", "unknown")
+        tier = str(s.get("level", s.get("difficulty", "unknown")))
         groups.setdefault(tier, []).append(s)
     return groups
 

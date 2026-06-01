@@ -144,16 +144,17 @@ def display_session(session: dict, console: Console) -> None:
     body = (
         f"Session ID : {escape(str(session.get('session_id', '—')))}\n"
         f"Runner     : {runner} ({runner_label})\n"
-        f"Seed       : {escape(str(session.get('seed', '—')))}  |  "
-        f"Difficulty : {escape(str(session.get('difficulty', '—')))}\n"
+        f"Level      : {escape(str(session.get('level', '—')))}  |  "
+        f"Target     : {escape(str(session.get('ground_truth', '—')))}\n"
         f"Outcome    : {escape(str(session.get('outcome', '—')))}"
     )
     console.print(Panel(body, title="[bold]CipherBench Session Inspector[/bold]"))
 
-    # D-04: Attempt table
+    # Attempt table
     table = Table(title="Attempt Trace", show_header=True, header_style="bold")
     table.add_column("Attempt", justify="right", min_width=8)
     table.add_column("Probe", min_width=8)
+    table.add_column("Encoded", min_width=8)
     table.add_column("Score", justify="right", min_width=8)
     table.add_column("Correct?", justify="center", min_width=9)
 
@@ -163,10 +164,10 @@ def display_session(session: dict, console: Console) -> None:
     )
     for entry in entries:
         if entry.get("extraction_failed"):
-            # D-05: extraction failures shown, not hidden
             table.add_row(
                 str(entry.get("attempt_num", "?")),
                 "— (extraction failed)",
+                "—",
                 "—",
                 "✗",
                 style="red",
@@ -176,9 +177,11 @@ def display_session(session: dict, console: Console) -> None:
             max_score = entry.get("max_score", "?")
             score_str = f"{score}/{max_score}" if score is not None else "—"
             is_correct = entry.get("is_correct", False)
+            encoded_str = escape(entry.get("encoded_output") or "—")
             table.add_row(
                 str(entry.get("attempt_num", "?")),
                 escape(entry.get("probe") or "—"),
+                encoded_str,
                 score_str,
                 "✓" if is_correct else "✗",
                 style="green" if is_correct else None,

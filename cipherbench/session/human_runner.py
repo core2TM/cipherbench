@@ -1,20 +1,16 @@
 """CipherBench human session runner — interactive CLI probe loop for human baseline
-recording (SESS-02).
+recording.
 
 Public names:
   HumanSessionRunner  — drives the interactive attempt loop; call .run() -> dict
-  create_human_session — factory: builds puzzle, engine, writer, and runner
+  create_human_session — factory: builds engine, writer, and runner
 
-Design decisions implemented here:
-  D-05  Human re-prompt on invalid input (does not raise; loop until valid)
-  D-07  runner_type='human' in session record
-  D-08  raw_response=None for all human attempt entries
-  D-15  Rich terminal display: Panel header, attempt history table, colored score lines
+The ground_truth (cipher target) is shown to the player at session start.
+After each probe the player sees their encoded output alongside the score.
 """
 from __future__ import annotations
 
 import logging
-import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -24,71 +20,48 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from cipherbench.puzzle import generate_puzzle, get_tier
-from cipherbench.types import DifficultyConfig
+from cipherbench.puzzle import (
+    ALPHABET,
+    OUTPUT_LENGTH,
+    create_engine_for_level,
+    get_ground_truth,
+    get_max_attempts,
+)
 from cipherbench.session.writer import SessionWriter, slugify_model, make_session_id
 
 logger = logging.getLogger(__name__)
 
 _console = Console()
 
-MAX_ATTEMPTS: int = 15  # Fixed at 15 — a core mechanic, not configurable in v1
-
 
 # ---------------------------------------------------------------------------
-# Module-private Rich display helpers (D-15)
+# Module-private Rich display helpers
 # ---------------------------------------------------------------------------
 
 
-def _show_puzzle_header(seed: int, difficulty_name: str, alphabet: str, output_length: int) -> None:
-    """Print Rich Panel with puzzle metadata (D-15).
-
-    Parameters
-    ----------
-    seed : int
-        RNG seed for the puzzle.
-    difficulty_name : str
-        Tier name, e.g. 'easy', 'medium', 'hard'.
-    alphabet : str
-        Character set used for probes and answers.
-    output_length : int
-        Length of each probe and answer string.
-    """
+def _show_puzzle_header(level: int, ground_truth: str, alphabet: str, output_length: int) -> None:
+    """Print Rich Panel with puzzle info and the target encoding."""
     body = (
-        f"Seed: {seed}\n"
-        f"Difficulty: {difficulty_name}\n"
+        f"Level: {level}\n"
+        f"Target: [bold cyan]{ground_truth}[/bold cyan]\n"
         f"Alphabet: {alphabet}\n\n"
-        f"PROBE: submit as  PROBE: {'X' * output_length}\n"
+        f"Find the input whose encoded output matches the target exactly.\n\n"
+        f"PROBE:  submit as  PROBE: {'X' * output_length}\n"
         f"ANSWER: submit as  ANSWER: {'X' * output_length}"
     )
-    _console.print(Panel(body, title="[bold]CipherBench[/bold]"))
+    _console.print(Panel(body, title=f"[bold]CipherBench — Level {level}[/bold]"))
 
 
-def _show_attempt_history(attempts: list[dict], max_score: int, show_encoding: bool = False) -> None:
-    """Print a Rich Table with attempt history (D-15).
-
-    Rows are colored: green if is_correct, yellow if score > 0, red if score == 0.
-    Empty table is printed if no attempts have been made yet.
-
-    Parameters
-    ----------
-    attempts : list[dict]
-        List of AttemptEntry dicts from the session record.
-    max_score : int
-        Maximum score per attempt (equals output_length).
-    show_encoding : bool, optional
-        When True, an "Encoded Output" column is added to the table, populated
-        from each attempt's ``encoded_output`` field.  Defaults to False.
-    """
+def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
+    """Print a Rich Table with attempt history including encoded output."""
     table = Table(title="Attempt History", show_header=True, header_style="bold")
     table.add_column("#", style="dim", width=4)
     table.add_column("Probe", min_width=8)
+    table.add_column("Encoded", min_width=8)
     table.add_column("Score", min_width=8)
-    if show_encoding:
-        table.add_column("Encoded Output", min_width=14)
-
     for a in attempts:
         probe_str = a.get("probe") or "INVALID"
+        encoded_str = a.get("encoded_output") or "N/A"
         score = a.get("score")
         is_correct = a.get("is_correct", False)
 
@@ -105,58 +78,28 @@ def _show_attempt_history(attempts: list[dict], max_score: int, show_encoding: b
             score_str = f"[red]{score}/{max_score}[/red]"
             row_style = "red"
 
-        if show_encoding:
-            enc_str = a.get("encoded_output") or "N/A"
-            table.add_row(
-                str(a["attempt_num"]), probe_str, score_str, enc_str,
-                style=row_style if not is_correct else None,
-            )
-        else:
-            table.add_row(
-                str(a["attempt_num"]), probe_str, score_str,
-                style=row_style if not is_correct else None,
-            )
+        table.add_row(
+            str(a["attempt_num"]),
+            probe_str,
+            encoded_str,
+            score_str,
+            style=row_style if not is_correct else None,
+        )
 
     _console.print(table)
 
 
-def _show_score_line(score: int, max_score: int, is_correct: bool) -> None:
-    """Print a single colored score feedback line (D-15).
-
-    Parameters
-    ----------
-    score : int
-        Score for the most recent attempt.
-    max_score : int
-        Maximum possible score.
-    is_correct : bool
-        True if the probe matched the cipher output exactly.
-    """
+def _show_score_line(score: int, max_score: int, is_correct: bool, encoded: str) -> None:
     if is_correct:
-        _console.print("[green]Correct![/green]")
+        _console.print(f"[green]Correct! Encoded: {encoded}[/green]")
     elif score > 0:
-        _console.print(f"[yellow]Score: {score}/{max_score}[/yellow]")
+        _console.print(f"[yellow]Score: {score}/{max_score}  Encoded: {encoded}[/yellow]")
     else:
-        _console.print(f"[red]Score: {score}/{max_score}[/red]")
+        _console.print(f"[red]Score: {score}/{max_score}  Encoded: {encoded}[/red]")
 
 
 def _validate_probe(probe: str, alphabet: str, output_length: int) -> bool:
-    """Return True if probe has the right length and all chars are in the alphabet.
-
-    Parameters
-    ----------
-    probe : str
-        Candidate probe string (already stripped and uppercased).
-    alphabet : str
-        Valid character set for the puzzle.
-    output_length : int
-        Expected length of the probe.
-
-    Returns
-    -------
-    bool
-        True if valid, False if invalid.
-    """
+    """Return True if probe has the right length and all chars are in the alphabet."""
     return len(probe) == output_length and all(c in alphabet for c in probe)
 
 
@@ -166,95 +109,73 @@ def _validate_probe(probe: str, alphabet: str, output_length: int) -> bool:
 
 
 class HumanSessionRunner:
-    """Drives the interactive probe-attempt loop for a human benchmark session (SESS-02).
+    """Drives the interactive probe-attempt loop for a human benchmark session.
 
     Do not instantiate directly — use :func:`create_human_session`.
-
-    Private attributes (single-underscore convention):
-      _puzzle         : Puzzle
-      _engine         : RuleEngine  — fresh per session, never reused
-      _writer         : SessionWriter
-      _session_record : dict        — mutable session state; mutated in-place by run()
-      _show_encoding  : bool        — when True, display encoded output column (transparent mode)
     """
 
     def __init__(
         self,
-        puzzle,
+        level: int,
+        ground_truth: str,
         engine,
         writer: SessionWriter,
         session_record: dict,
-        show_encoding: bool = False,
+        max_attempts: int = 5,
     ) -> None:
-        self._puzzle = puzzle
+        self._level = level
+        self._ground_truth = ground_truth
         self._engine = engine
         self._writer = writer
         self._session_record = session_record
-        self._show_encoding = show_encoding
+        self._max_attempts = max_attempts
 
     def run(self) -> dict:
         """Execute the interactive probe loop and return the final session record.
 
-        Loop behavior
-        -------------
-        - Valid input is collected via typer.prompt with re-prompt on invalid input (D-05)
-        - write_checkpoint is called after every valid attempt (D-17)
-        - Rich Panel, attempt history table, and colored score lines shown per D-15
-        - Session finalizes after correct answer or all 5 attempts exhausted
-
         Returns
         -------
         dict
-            The final session_record with all D-11 fields.
+            The final session_record with all fields.
         """
-        alphabet = self._puzzle.difficulty.alphabet
-        output_length = self._puzzle.difficulty.output_length
+        alphabet = ALPHABET
+        output_length = OUTPUT_LENGTH
         max_score = output_length
 
-        _show_puzzle_header(
-            self._puzzle.seed,
-            get_tier(self._puzzle.difficulty),
-            alphabet,
-            output_length,
-        )
+        _show_puzzle_header(self._level, self._ground_truth, alphabet, output_length)
 
         valid_attempts: int = 0
 
-        # Show empty table once before the first probe so column headers are visible
-        _show_attempt_history(self._session_record["attempts"], max_score, show_encoding=self._show_encoding)
+        _show_attempt_history(self._session_record["attempts"], max_score)
 
-        while valid_attempts < MAX_ATTEMPTS:
-            # Input validation loop — re-prompt until valid (D-05)
-            raw = typer.prompt(f"Probe {valid_attempts + 1}/{MAX_ATTEMPTS}").strip().upper()
-            # WR-05: strip 'PROBE:' prefix (case-insensitive) so users who follow the
-            # header instructions (PROBE: XXXXX) are not rejected for extra characters.
+        while valid_attempts < self._max_attempts:
+            raw = typer.prompt(f"Probe {valid_attempts + 1}/{self._max_attempts}").strip().upper()
             if raw.startswith("PROBE:"):
                 raw = raw[len("PROBE:"):].strip()
             while not _validate_probe(raw, alphabet, output_length):
                 _console.print(
                     f"[red]Invalid: must be {output_length} chars from alphabet '{alphabet}'[/red]"
                 )
-                raw = typer.prompt(f"Probe {valid_attempts + 1}/{MAX_ATTEMPTS}").strip().upper()
+                raw = typer.prompt(f"Probe {valid_attempts + 1}/{self._max_attempts}").strip().upper()
                 if raw.startswith("PROBE:"):
                     raw = raw[len("PROBE:"):].strip()
 
-            attempt_score = self._engine.score_attempt(raw, show_encoding=self._show_encoding)
+            attempt_score = self._engine.score_attempt(raw)
 
             entry: dict = {
                 "attempt_num": len(self._session_record["attempts"]) + 1,
                 "probe": raw,
+                "encoded_output": attempt_score.encoded_output,
                 "score": attempt_score.score,
                 "max_score": max_score,
                 "is_correct": attempt_score.is_correct,
-                "encoded_output": attempt_score.encoded_output,
-                "raw_response": None,  # D-08: always None for human sessions
+                "raw_response": None,
                 "extraction_failed": False,
             }
             self._session_record["attempts"].append(entry)
             self._writer.write_checkpoint(self._session_record)
 
-            # Show updated table immediately — every attempt including the latest is visible
-            _show_attempt_history(self._session_record["attempts"], max_score, show_encoding=self._show_encoding)
+            _show_attempt_history(self._session_record["attempts"], max_score)
 
             valid_attempts += 1
             if attempt_score.is_correct:
@@ -268,12 +189,9 @@ class HumanSessionRunner:
                 f"Submit your final answer as: ANSWER: {'X' * output_length}"
             )
             raw_ans = typer.prompt("Submit final answer (ANSWER: XXXXX)").strip().upper()
-
-            # Strip leading "ANSWER:" prefix if present
             if raw_ans.startswith("ANSWER:"):
                 raw_ans = raw_ans[len("ANSWER:"):].strip()
 
-            # Validate; re-prompt once if invalid
             if not _validate_probe(raw_ans, alphabet, output_length):
                 _console.print(
                     f"[red]Invalid: must be {output_length} chars from alphabet '{alphabet}'[/red]"
@@ -299,59 +217,44 @@ class HumanSessionRunner:
 
 
 def create_human_session(
-    seed: Optional[int],
-    difficulty: DifficultyConfig,
+    level: int,
     player_name: str,
     output_dir: Path | str,
-    show_encoding: bool = False,
 ) -> HumanSessionRunner:
-    """Build a fresh :class:`HumanSessionRunner` for a new human benchmark session.
+    """Build a fresh HumanSessionRunner for a new human benchmark session.
 
     Parameters
     ----------
-    seed : int or None
-        RNG seed for puzzle generation.  ``None`` generates a random seed using
-        an isolated ``random.Random()`` instance (never touches global state, D-11).
-    difficulty : DifficultyConfig
-        Difficulty preset (EASY, MEDIUM, HARD, or custom).
+    level : int
+        Puzzle level: 1, 2, or 3.
     player_name : str
-        Human player name stored in the session JSON (D-13).
+        Human player name stored in the session JSON.
     output_dir : Path or str
-        Directory for session JSON files (D-10).
-    show_encoding : bool, optional
-        When True, the runner operates in transparent mode: encoded outputs are
-        surfaced per attempt and shown in the attempt history table.
+        Directory for session JSON files.
 
     Returns
     -------
     HumanSessionRunner
-        A fully initialised runner with the session ``in_progress`` file already
-        written to disk (D-17).
+        A fully initialised runner with the session 'in_progress' file already
+        written to disk.
     """
     output_dir = Path(output_dir)
-
-    # RNG isolation: never call global random.seed() (D-11)
-    if seed is None:
-        seed = random.Random().randint(0, 2**32 - 1)
+    ground_truth = get_ground_truth(level)
+    max_attempts = get_max_attempts(level)
+    engine = create_engine_for_level(level)
 
     player_slug = slugify_model(player_name)
     human_slug = f"human-{player_slug}"
-
-    # Build session ID following D-06: {YYYYMMDD}T{HHMMSS}-human-{player-name}
     session_id = make_session_id(human_slug, output_dir)
     now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-    puzzle = generate_puzzle(seed, difficulty)
-    engine = puzzle.create_engine()
 
     session_record: dict = {
         "session_id": session_id,
         "runner_type": "human",
         "model": None,
         "player_name": player_name,
-        "seed": seed,
-        "difficulty": get_tier(difficulty),
-        "puzzle_hash": puzzle.puzzle_hash,
+        "level": level,
+        "ground_truth": ground_truth,
         "outcome": "in_progress",
         "final_answer": None,
         "attempts": [],
@@ -362,4 +265,4 @@ def create_human_session(
     writer = SessionWriter(output_dir, session_id)
     writer.init_session(session_record)
 
-    return HumanSessionRunner(puzzle, engine, writer, session_record, show_encoding=show_encoding)
+    return HumanSessionRunner(level, ground_truth, engine, writer, session_record, max_attempts=max_attempts)

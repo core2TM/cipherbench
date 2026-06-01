@@ -95,7 +95,6 @@ def test_get_tier_custom():
         alphabet="ABCDE",
         output_length=4,
         state_change_rate=1.0,
-        cross_char_depth=1,
     )
     assert get_tier(custom) == "custom"
 

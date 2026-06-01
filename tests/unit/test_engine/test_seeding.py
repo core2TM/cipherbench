@@ -107,7 +107,7 @@ def test_different_seeds_produce_different_scores():
     engine_1 = create_rule_engine(seed=1, difficulty=d)
     engine_2 = create_rule_engine(seed=2, difficulty=d)
 
-    PROBE = "AABCD"
+    PROBE = "ZZZZZ"
     ROUNDS = 5
     scores_1 = [engine_1.score_attempt(PROBE).score for _ in range(ROUNDS)]
     scores_2 = [engine_2.score_attempt(PROBE).score for _ in range(ROUNDS)]

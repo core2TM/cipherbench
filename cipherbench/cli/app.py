@@ -1,120 +1,64 @@
-"""CipherBench CLI entry point — wires `run` and `play` subcommands (SESS-01, SESS-02, D-12, D-13).
+"""CipherBench CLI entry point — wires `run`, `play`, `score`, and `inspect` subcommands.
 
 No business logic here — this module is a coordinator that delegates to session runners.
 
 Public names:
-  app  — Typer application with `run` and `play` subcommands
+  app  — Typer application with subcommands
 
-Design decisions implemented here:
-  D-12  `cipherbench run` flags: --model, --seed, --num-puzzles, --runs-per-puzzle,
-        --difficulty, --output-dir, --api-base
-  D-13  `cipherbench play` flags: --player-name, --seed, --difficulty, --output-dir
-  D-14  API keys from env vars — LiteLLM reads standard provider env vars automatically
-  D-15  Rich terminal output delegated entirely to HumanSessionRunner
+Design:
+  Puzzles have 3 fixed levels (1, 2, 3). No seed or difficulty flags.
+  --level selects which of the 3 fixed cipher challenges to run.
 """
-import random
-from enum import Enum
 from pathlib import Path
 from typing import Annotated, Optional
 
 import typer
 
-from cipherbench.puzzle import EASY, MEDIUM, HARD
-from cipherbench.types import DifficultyConfig
+from cipherbench.puzzle import get_ground_truth, get_max_attempts, ALPHABET, OUTPUT_LENGTH, LEVEL_CONFIGS
 from cipherbench.session.model_runner import create_model_session
 from cipherbench.session.human_runner import create_human_session
 from cipherbench.adapters.litellm_adapter import LiteLLMAdapter
 
 
-# ---------------------------------------------------------------------------
-# Difficulty enum and config mapping
-# ---------------------------------------------------------------------------
-
-
-class Difficulty(str, Enum):
-    """Difficulty tier for a CipherBench puzzle session."""
-
-    easy = "easy"
-    medium = "medium"
-    hard = "hard"
-
-
-def _difficulty_to_config(d: Difficulty) -> DifficultyConfig:
-    """Map a Difficulty enum value to the canonical DifficultyConfig preset.
-
-    Parameters
-    ----------
-    d : Difficulty
-        CLI difficulty tier enum value.
-
-    Returns
-    -------
-    DifficultyConfig
-        The EASY, MEDIUM, or HARD preset from cipherbench.puzzle.
-    """
-    if d == Difficulty.easy:
-        return EASY
-    if d == Difficulty.medium:
-        return MEDIUM
-    return HARD
-
-
-# ---------------------------------------------------------------------------
-# Main app
-# ---------------------------------------------------------------------------
-
 app = typer.Typer(name="cipherbench", help="CipherBench — AGI Proximity Benchmark.")
 
 
 # ---------------------------------------------------------------------------
-# `cipherbench run` — D-12 flags
+# `cipherbench run` — LLM benchmark session
 # ---------------------------------------------------------------------------
 
 
 @app.command(name="run")
 def run_command(
     model: Annotated[str, typer.Option("--model", help="LiteLLM model string, e.g. anthropic/claude-opus-4-7")],
-    seed: Annotated[Optional[int], typer.Option("--seed", help="RNG seed (default: random)")] = None,
-    num_puzzles: Annotated[int, typer.Option("--num-puzzles", help="Number of distinct puzzles to run")] = 1,
-    runs_per_puzzle: Annotated[int, typer.Option("--runs-per-puzzle", help="Independent sessions per puzzle")] = 1,
-    difficulty: Annotated[Difficulty, typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = Difficulty.medium,
+    level: Annotated[int, typer.Option("--level", help="Puzzle level: 1 (easiest), 2, or 3")] = 1,
+    num_puzzles: Annotated[int, typer.Option("--num-puzzles", help="Number of sessions to run")] = 1,
     output_dir: Annotated[str, typer.Option("--output-dir", help="Directory to write session JSON files")] = "./sessions",
-    api_base: Annotated[Optional[str], typer.Option("--api-base", help="Base URL for LiteLLM proxy server, e.g. https://my-proxy.example.com")] = None,
+    api_base: Annotated[Optional[str], typer.Option("--api-base", help="Base URL for LiteLLM proxy server")] = None,
 ) -> None:
-    """Run a model benchmark session on a cipher puzzle (SESS-01)."""
+    """Run a model benchmark session on a cipher puzzle."""
+    if level not in (1, 2, 3):
+        typer.echo("Error: --level must be 1, 2, or 3", err=True)
+        raise typer.Exit(code=1)
     if num_puzzles < 1:
         typer.echo("Error: --num-puzzles must be >= 1", err=True)
         raise typer.Exit(code=1)
-    if runs_per_puzzle < 1:
-        typer.echo("Error: --runs-per-puzzle must be >= 1", err=True)
-        raise typer.Exit(code=1)
 
-    config = _difficulty_to_config(difficulty)
+    ground_truth = get_ground_truth(level)
+    typer.echo(f"Level {level} | Target: {ground_truth} | Alphabet: {ALPHABET}")
+
     out_path = Path(output_dir)
-
-    # D-01, D-03: collect only current-run sessions (not all historical sessions)
     current_run_sessions: list[dict] = []
 
-    # WR-02: derive per-puzzle seeds from root seed to ensure distinct puzzles when
-    # --num-puzzles > 1 and --seed is provided.  random.Random(None) samples the OS
-    # entropy source, preserving the non-seeded randomness contract (D-11, GEN-04).
-    puzzle_rng = random.Random(seed)
+    for run_idx in range(num_puzzles):
+        adapter = LiteLLMAdapter(model, api_base=api_base)
+        runner = create_model_session(level, adapter, out_path)
+        session_record = runner.run()
+        current_run_sessions.append(session_record)
+        typer.echo(
+            f"Run {run_idx + 1}/{num_puzzles}: level={level} outcome={session_record['outcome']}"
+        )
 
-    for puzzle_idx in range(num_puzzles):
-        # RNG isolation: derive per-puzzle seed from puzzle_rng (D-11, GEN-04)
-        puzzle_seed = puzzle_rng.randint(0, 2**32 - 1)
-
-        for run_idx in range(runs_per_puzzle):
-            adapter = LiteLLMAdapter(model, api_base=api_base)
-            runner = create_model_session(puzzle_seed, config, adapter, out_path)
-            session_record = runner.run()
-            current_run_sessions.append(session_record)
-            typer.echo(
-                f"Puzzle {puzzle_idx + 1}/{num_puzzles} Run {run_idx + 1}/{runs_per_puzzle}: "
-                f"seed={puzzle_seed} outcome={session_record['outcome']}"
-            )
-
-    # D-01, D-03: live summary after all sessions complete — use current-run sessions only
     from cipherbench.scoring.scorer import load_sessions as _load_sessions
     from cipherbench.scoring.reporter import render_live_summary as _render_live_summary
     human_baseline = _load_sessions(out_path, runner_type="human")
@@ -122,50 +66,73 @@ def run_command(
 
 
 # ---------------------------------------------------------------------------
-# `cipherbench play` — D-13 flags
+# `cipherbench run-all` — run all 3 levels sequentially
+# ---------------------------------------------------------------------------
+
+
+@app.command(name="run-all")
+def run_all_command(
+    model: Annotated[str, typer.Option("--model", help="LiteLLM model string, e.g. anthropic/claude-opus-4-7")],
+    num_puzzles: Annotated[int, typer.Option("--num-puzzles", help="Number of sessions per level")] = 1,
+    output_dir: Annotated[str, typer.Option("--output-dir", help="Directory to write session JSON files")] = "./sessions",
+    api_base: Annotated[Optional[str], typer.Option("--api-base", help="Base URL for LiteLLM proxy server")] = None,
+) -> None:
+    """Run a model through all 3 levels sequentially and print a combined summary."""
+    from cipherbench.scoring.scorer import load_sessions as _load_sessions
+    from cipherbench.scoring.reporter import render_live_summary as _render_live_summary
+
+    out_path = Path(output_dir)
+    all_sessions: list[dict] = []
+
+    for level in sorted(LEVEL_CONFIGS):
+        ground_truth = get_ground_truth(level)
+        typer.echo(f"\n── Level {level} | Target: {ground_truth} | Alphabet: {ALPHABET} ──")
+
+        for run_idx in range(num_puzzles):
+            adapter = LiteLLMAdapter(model, api_base=api_base)
+            runner = create_model_session(level, adapter, out_path)
+            session_record = runner.run()
+            all_sessions.append(session_record)
+            typer.echo(
+                f"  Run {run_idx + 1}/{num_puzzles}: outcome={session_record['outcome']}"
+            )
+
+    typer.echo("\n── Combined Results ──")
+    human_baseline = _load_sessions(out_path, runner_type="human")
+    _render_live_summary(all_sessions, human_baseline)
+
+
+# ---------------------------------------------------------------------------
+# `cipherbench play` — human interactive session, all 3 levels
 # ---------------------------------------------------------------------------
 
 
 @app.command(name="play")
 def play_command(
     player_name: Annotated[str, typer.Option("--player-name", help="Player name stored in session JSON")] = "human",
-    seed: Annotated[Optional[int], typer.Option("--seed", help="RNG seed (default: random)")] = None,
-    difficulty: Annotated[Difficulty, typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = Difficulty.medium,
     output_dir: Annotated[str, typer.Option("--output-dir", help="Directory to write session JSON files")] = "./sessions",
-    show_encoding: Annotated[bool, typer.Option("--show-encoding/--no-show-encoding", help="Display the encoded output of each probe attempt (transparent mode)")] = True,
-    length: Annotated[Optional[int], typer.Option("--length", help="Override output_length from the difficulty preset (min 2)")] = None,
 ) -> None:
-    """Play a cipher puzzle interactively as a human (SESS-02)."""
-    config = _difficulty_to_config(difficulty)
-
-    # T-w7g-02 / T-w7g-03: validate --length and override output_length if provided
-    if length is not None:
-        if length < 2:
-            typer.echo("Error: --length must be >= 2", err=True)
-            raise typer.Exit(code=1)
-        # Clamp cross_char_depth: prevents DifficultyConfig.__post_init__ ValueError when
-        # output_length shrinks below the preset's cross_char_depth (T-w7g-03 mitigation).
-        config = DifficultyConfig(
-            alphabet=config.alphabet,
-            output_length=length,
-            state_change_rate=config.state_change_rate,
-            cross_char_depth=min(config.cross_char_depth, length - 1),
-        )
-
+    """Play all 3 cipher levels interactively as a human, one after another."""
     out_path = Path(output_dir)
+    results: list[dict] = []
 
-    # RNG isolation: isolated random.Random() for seed generation (D-11)
-    play_seed = seed if seed is not None else random.Random().randint(0, 2**32 - 1)
+    for level in sorted(LEVEL_CONFIGS):
+        typer.echo(f"\n── Level {level} of {len(LEVEL_CONFIGS)} ──")
+        runner = create_human_session(level, player_name, out_path)
+        session_record = runner.run()
+        results.append(session_record)
+        outcome = session_record["outcome"]
+        typer.echo(f"Level {level} complete: {outcome}")
+        if level < len(LEVEL_CONFIGS):
+            typer.confirm("Continue to next level?", default=True, abort=True)
 
-    runner = create_human_session(play_seed, config, player_name, out_path, show_encoding=show_encoding)
-    session_record = runner.run()
-    typer.echo(
-        f"Session complete: seed={play_seed} outcome={session_record['outcome']}"
-    )
+    typer.echo("\n── Final Results ──")
+    for r in results:
+        typer.echo(f"  Level {r['level']}: {r['outcome']}")
 
 
 # ---------------------------------------------------------------------------
-# `cipherbench score` — SCORE-01 through SCORE-04 flags (D-02)
+# `cipherbench score` — scoring report
 # ---------------------------------------------------------------------------
 
 
@@ -173,21 +140,21 @@ def play_command(
 def score_command(
     model: Annotated[Optional[str], typer.Option("--model", help="LiteLLM model string to score")] = None,
     sessions_dir: Annotated[str, typer.Option("--sessions-dir", help="Directory to read session files from")] = "./sessions",
-    difficulty: Annotated[Optional[Difficulty], typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = None,
+    level: Annotated[Optional[int], typer.Option("--level", help="Filter by puzzle level (1, 2, or 3)")] = None,
     output_file: Annotated[Optional[str], typer.Option("--output-file", help="Write JSON report to this path")] = None,
     human: Annotated[bool, typer.Option("--human/--no-human", help="Score human sessions instead of model sessions")] = False,
 ) -> None:
-    """Compute scoring report for a model or human player (SCORE-01 through SCORE-04). No business logic here — delegates to scorer + reporter + report_writer."""
+    """Compute scoring report for a model or human player."""
     from cipherbench.scoring.scorer import load_sessions, compute_report
     from cipherbench.scoring.reporter import render_score_report
     from cipherbench.scoring.report_writer import write_json_report
 
     runner_type = "human" if human else "model"
-    sessions_path = Path(sessions_dir).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
-    diff_str = difficulty.value if difficulty is not None else None
+    sessions_path = Path(sessions_dir).resolve()
+    level_filter = str(level) if level is not None else None
 
-    model_sessions = load_sessions(sessions_path, runner_type=runner_type, model=model, difficulty=diff_str)
-    human_sessions = load_sessions(sessions_path, runner_type="human", difficulty=diff_str) if not human else []
+    model_sessions = load_sessions(sessions_path, runner_type=runner_type, model=model, difficulty=level_filter)
+    human_sessions = load_sessions(sessions_path, runner_type="human", difficulty=level_filter) if not human else []
 
     if not model_sessions:
         typer.echo("No terminal sessions found matching the given filters.", err=True)
@@ -198,7 +165,7 @@ def score_command(
     render_score_report(report, model=label)
 
     if output_file:
-        resolved_output = Path(output_file).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
+        resolved_output = Path(output_file).resolve()
         try:
             write_json_report(report, resolved_output)
         except OSError as exc:
@@ -207,7 +174,7 @@ def score_command(
 
 
 # ---------------------------------------------------------------------------
-# `cipherbench inspect` — SESS-03 session replay
+# `cipherbench inspect` — session replay
 # ---------------------------------------------------------------------------
 
 
@@ -216,11 +183,11 @@ def inspect_command(
     session_id: Annotated[str, typer.Argument(help="Session ID or substring to match")],
     sessions_dir: Annotated[str, typer.Option("--sessions-dir", help="Directory to read session files from")] = "./sessions",
 ) -> None:
-    """Replay a stored session trace, displaying all probe attempts and final outcome (SESS-03)."""
+    """Replay a stored session trace, displaying all probe attempts and final outcome."""
     from cipherbench.session.inspector import inspect_session, InspectorError
     from rich.console import Console
 
-    resolved = Path(sessions_dir).resolve()  # ASVS V5: resolve prevents path traversal (T-04-06)
+    resolved = Path(sessions_dir).resolve()
     try:
         inspect_session(session_id, resolved, Console())
     except InspectorError as exc:
