@@ -22,9 +22,9 @@ ALPHABET: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 OUTPUT_LENGTH: int = 5
 
 LEVEL_CONFIGS: dict[int, tuple[str, int, list[int]]] = {
-    1: ("ABCDE", 3, CYCLIC5),
-    2: ("CLNHJ", 3, GROUPED),
-    3: ("VJOTB", 3, STAIRCASE),
+    1: ("ABCDE", 5, CYCLIC5),
+    2: ("CLNHJ", 5, GROUPED),
+    3: ("VJOTB", 5, STAIRCASE),
 }
 
 
