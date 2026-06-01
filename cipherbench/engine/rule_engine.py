@@ -47,7 +47,6 @@ from cipherbench.engine.layers import (
     apply_state_layer,
     apply_cross_char_layer_multi,
     count_correct,
-    count_chars_present,
 )
 
 
@@ -96,7 +95,7 @@ class RuleEngine:
         self._round = 1                                       # private mutable state (starts at 1)
         self._attempts_remaining: int = MAX_SCORE_ATTEMPTS   # WR-04: enforce attempt budget
 
-    def score_attempt(self, guess: str) -> AttemptScore:
+    def score_attempt(self, guess: str, show_encoding: bool = False) -> AttemptScore:
         """Validate the guess, encode the ground truth for the current round, return score.
 
         This is the ONLY public method (RULE-04).  It:
@@ -108,19 +107,27 @@ class RuleEngine:
         4. Encodes the fixed ground truth for the captured round number (RULE-01 state layer).
         5. Counts matching positions and returns an AttemptScore (D-01/D-02/D-03).
 
-        The encoded ciphertext is a local variable — it is never stored as an attribute
-        and is never returned to the caller.
+        The encoded ciphertext is a local variable — it is never stored as an attribute.
+        When show_encoding=True (transparent/debug mode), the encoded guess is included in
+        the returned AttemptScore as encoded_output.  When show_encoding=False (default),
+        encoded_output is None and the information boundary (RULE-04) is preserved.
 
         Parameters
         ----------
         guess : str
             Player's or model's probe string.  Must have length equal to output_length
             and contain only characters from the configured alphabet.
+        show_encoding : bool, optional
+            When True, the encoded form of ``guess`` is included in the returned
+            AttemptScore as encoded_output (transparent mode — user opt-in).
+            When False (default), encoded_output is None — normal information boundary
+            applies (RULE-04, T-w7g-01 accepted disposition).
 
         Returns
         -------
         AttemptScore
             Aggregate correctness count.  No cipher key, no ciphertext, no shifts.
+            encoded_output is None unless show_encoding=True.
 
         Raises
         ------
@@ -175,13 +182,11 @@ class RuleEngine:
         )
         # Score encoded guess against target (ciphertext never returned to caller)
         score = count_correct(encoded_guess, target_str)
-        # Raw-string character presence hint (position-independent, pre-encoding)
-        chars_present = count_chars_present(guess, self._ground_truth)
         return AttemptScore(
             score=score,
             max_score=len(guess),
             is_correct=(score == len(guess)),
-            correct_chars=chars_present,
+            encoded_output=encoded_guess if show_encoding else None,
         )
 
     def _encode_for_round(self, round_num: int) -> str:

@@ -91,15 +91,13 @@ def build_user_turn(attempt_num: int, attempts: list[dict], max_score: int) -> s
 
     # Build plain-text attempt history table (D-04: full history every turn)
     lines = ["Attempt history:", ""]
-    lines.append(f"{'#':<6}{'Probe':<10}{'Score':<10}{'Correct Letters':<16}")
-    lines.append("-" * 42)
+    lines.append(f"{'#':<6}{'Probe':<10}{'Score':<10}")
+    lines.append("-" * 26)
     for a in attempts:
         probe_str = a.get("probe") or "INVALID"
         score = a.get("score")
         score_str = f"{score}/{max_score}" if score is not None else "N/A"
-        cc = a.get("correct_chars")
-        cc_str = str(cc) if cc is not None else "N/A"
-        lines.append(f"{a['attempt_num']:<6}{probe_str:<10}{score_str:<10}{cc_str:<16}")
+        lines.append(f"{a['attempt_num']:<6}{probe_str:<10}{score_str:<10}")
 
     lines.append("")
     lines.append(f"Please submit probe number {attempt_num} (PROBE: XXXXX).")

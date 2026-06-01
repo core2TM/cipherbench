@@ -132,15 +132,32 @@ def play_command(
     seed: Annotated[Optional[int], typer.Option("--seed", help="RNG seed (default: random)")] = None,
     difficulty: Annotated[Difficulty, typer.Option("--difficulty", case_sensitive=False, help="easy | medium | hard")] = Difficulty.medium,
     output_dir: Annotated[str, typer.Option("--output-dir", help="Directory to write session JSON files")] = "./sessions",
+    show_encoding: Annotated[bool, typer.Option("--show-encoding/--no-show-encoding", help="Display the encoded output of each probe attempt (transparent mode)")] = True,
+    length: Annotated[Optional[int], typer.Option("--length", help="Override output_length from the difficulty preset (min 2)")] = None,
 ) -> None:
     """Play a cipher puzzle interactively as a human (SESS-02)."""
     config = _difficulty_to_config(difficulty)
+
+    # T-w7g-02 / T-w7g-03: validate --length and override output_length if provided
+    if length is not None:
+        if length < 2:
+            typer.echo("Error: --length must be >= 2", err=True)
+            raise typer.Exit(code=1)
+        # Clamp cross_char_depth: prevents DifficultyConfig.__post_init__ ValueError when
+        # output_length shrinks below the preset's cross_char_depth (T-w7g-03 mitigation).
+        config = DifficultyConfig(
+            alphabet=config.alphabet,
+            output_length=length,
+            state_change_rate=config.state_change_rate,
+            cross_char_depth=min(config.cross_char_depth, length - 1),
+        )
+
     out_path = Path(output_dir)
 
     # RNG isolation: isolated random.Random() for seed generation (D-11)
     play_seed = seed if seed is not None else random.Random().randint(0, 2**32 - 1)
 
-    runner = create_human_session(play_seed, config, player_name, out_path)
+    runner = create_human_session(play_seed, config, player_name, out_path, show_encoding=show_encoding)
     session_record = runner.run()
     typer.echo(
         f"Session complete: seed={play_seed} outcome={session_record['outcome']}"

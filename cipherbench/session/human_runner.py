@@ -64,7 +64,7 @@ def _show_puzzle_header(seed: int, difficulty_name: str, alphabet: str, output_l
     _console.print(Panel(body, title="[bold]CipherBench[/bold]"))
 
 
-def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
+def _show_attempt_history(attempts: list[dict], max_score: int, show_encoding: bool = False) -> None:
     """Print a Rich Table with attempt history (D-15).
 
     Rows are colored: green if is_correct, yellow if score > 0, red if score == 0.
@@ -76,19 +76,21 @@ def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
         List of AttemptEntry dicts from the session record.
     max_score : int
         Maximum score per attempt (equals output_length).
+    show_encoding : bool, optional
+        When True, an "Encoded Output" column is added to the table, populated
+        from each attempt's ``encoded_output`` field.  Defaults to False.
     """
     table = Table(title="Attempt History", show_header=True, header_style="bold")
     table.add_column("#", style="dim", width=4)
     table.add_column("Probe", min_width=8)
     table.add_column("Score", min_width=8)
-    table.add_column("Correct Letters", min_width=14)
+    if show_encoding:
+        table.add_column("Encoded Output", min_width=14)
 
     for a in attempts:
         probe_str = a.get("probe") or "INVALID"
         score = a.get("score")
         is_correct = a.get("is_correct", False)
-        cc = a.get("correct_chars")
-        cc_str = str(cc) if cc is not None else "N/A"
 
         if score is None:
             score_str = "N/A"
@@ -103,7 +105,17 @@ def _show_attempt_history(attempts: list[dict], max_score: int) -> None:
             score_str = f"[red]{score}/{max_score}[/red]"
             row_style = "red"
 
-        table.add_row(str(a["attempt_num"]), probe_str, score_str, cc_str, style=row_style if not is_correct else None)
+        if show_encoding:
+            enc_str = a.get("encoded_output") or "N/A"
+            table.add_row(
+                str(a["attempt_num"]), probe_str, score_str, enc_str,
+                style=row_style if not is_correct else None,
+            )
+        else:
+            table.add_row(
+                str(a["attempt_num"]), probe_str, score_str,
+                style=row_style if not is_correct else None,
+            )
 
     _console.print(table)
 
@@ -163,13 +175,22 @@ class HumanSessionRunner:
       _engine         : RuleEngine  — fresh per session, never reused
       _writer         : SessionWriter
       _session_record : dict        — mutable session state; mutated in-place by run()
+      _show_encoding  : bool        — when True, display encoded output column (transparent mode)
     """
 
-    def __init__(self, puzzle, engine, writer: SessionWriter, session_record: dict) -> None:
+    def __init__(
+        self,
+        puzzle,
+        engine,
+        writer: SessionWriter,
+        session_record: dict,
+        show_encoding: bool = False,
+    ) -> None:
         self._puzzle = puzzle
         self._engine = engine
         self._writer = writer
         self._session_record = session_record
+        self._show_encoding = show_encoding
 
     def run(self) -> dict:
         """Execute the interactive probe loop and return the final session record.
@@ -199,10 +220,10 @@ class HumanSessionRunner:
 
         valid_attempts: int = 0
 
-        while valid_attempts < MAX_ATTEMPTS:
-            # Show attempt history before each probe (empty table on first attempt)
-            _show_attempt_history(self._session_record["attempts"], max_score)
+        # Show empty table once before the first probe so column headers are visible
+        _show_attempt_history(self._session_record["attempts"], max_score, show_encoding=self._show_encoding)
 
+        while valid_attempts < MAX_ATTEMPTS:
             # Input validation loop — re-prompt until valid (D-05)
             raw = typer.prompt(f"Probe {valid_attempts + 1}/{MAX_ATTEMPTS}").strip().upper()
             # WR-05: strip 'PROBE:' prefix (case-insensitive) so users who follow the
@@ -217,7 +238,7 @@ class HumanSessionRunner:
                 if raw.startswith("PROBE:"):
                     raw = raw[len("PROBE:"):].strip()
 
-            attempt_score = self._engine.score_attempt(raw)
+            attempt_score = self._engine.score_attempt(raw, show_encoding=self._show_encoding)
 
             entry: dict = {
                 "attempt_num": len(self._session_record["attempts"]) + 1,
@@ -225,14 +246,15 @@ class HumanSessionRunner:
                 "score": attempt_score.score,
                 "max_score": max_score,
                 "is_correct": attempt_score.is_correct,
-                "correct_chars": attempt_score.correct_chars,
+                "encoded_output": attempt_score.encoded_output,
                 "raw_response": None,  # D-08: always None for human sessions
                 "extraction_failed": False,
             }
             self._session_record["attempts"].append(entry)
             self._writer.write_checkpoint(self._session_record)
 
-            _show_score_line(attempt_score.score, max_score, attempt_score.is_correct)
+            # Show updated table immediately — every attempt including the latest is visible
+            _show_attempt_history(self._session_record["attempts"], max_score, show_encoding=self._show_encoding)
 
             valid_attempts += 1
             if attempt_score.is_correct:
@@ -281,6 +303,7 @@ def create_human_session(
     difficulty: DifficultyConfig,
     player_name: str,
     output_dir: Path | str,
+    show_encoding: bool = False,
 ) -> HumanSessionRunner:
     """Build a fresh :class:`HumanSessionRunner` for a new human benchmark session.
 
@@ -295,6 +318,9 @@ def create_human_session(
         Human player name stored in the session JSON (D-13).
     output_dir : Path or str
         Directory for session JSON files (D-10).
+    show_encoding : bool, optional
+        When True, the runner operates in transparent mode: encoded outputs are
+        surfaced per attempt and shown in the attempt history table.
 
     Returns
     -------
@@ -336,4 +362,4 @@ def create_human_session(
     writer = SessionWriter(output_dir, session_id)
     writer.init_session(session_record)
 
-    return HumanSessionRunner(puzzle, engine, writer, session_record)
+    return HumanSessionRunner(puzzle, engine, writer, session_record, show_encoding=show_encoding)

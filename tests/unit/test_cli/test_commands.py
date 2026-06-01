@@ -53,3 +53,15 @@ def test_play_command_shows_seed_flag():
     """cipherbench play --help output includes --seed flag."""
     result = CliRunner().invoke(app, ["play", "--help"])
     assert "--seed" in result.output
+
+
+def test_play_command_shows_show_encoding_flag():
+    """cipherbench play --help output includes --show-encoding flag (w7g)."""
+    result = CliRunner().invoke(app, ["play", "--help"])
+    assert "--show-encoding" in result.output
+
+
+def test_play_command_shows_length_flag():
+    """cipherbench play --help output includes --length flag (w7g)."""
+    result = CliRunner().invoke(app, ["play", "--help"])
+    assert "--length" in result.output

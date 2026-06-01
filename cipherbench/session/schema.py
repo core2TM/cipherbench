@@ -37,10 +37,6 @@ class AttemptEntry(TypedDict):
         Maximum possible score (equals output_length, e.g. 5).
     is_correct : bool
         True iff score == max_score.  False for extraction failures.
-    correct_chars : Optional[int]
-        Number of characters in the probe that appear anywhere in the ground truth
-        (multiset intersection). None if extraction_failed=True or if loading an
-        older session file that pre-dates this field.
     raw_response : Optional[str]
         The full raw text from the model (model sessions only).
         None for human sessions.
@@ -54,7 +50,6 @@ class AttemptEntry(TypedDict):
     score: Optional[int]
     max_score: int
     is_correct: bool
-    correct_chars: Optional[int]
     raw_response: Optional[str]
     extraction_failed: bool
 

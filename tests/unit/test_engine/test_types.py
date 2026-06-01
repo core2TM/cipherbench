@@ -12,31 +12,31 @@ from cipherbench.types import AttemptScore, DifficultyConfig
 
 def test_attempt_score_valid():
     """A score below max_score with is_correct=False constructs successfully."""
-    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
+    s = AttemptScore(score=3, max_score=5, is_correct=False)
     assert s.score == 3
 
 
 def test_attempt_score_correct_flag_consistency():
     """score==max_score with is_correct=False must raise ValueError (D-03)."""
     with pytest.raises(ValueError):
-        AttemptScore(score=5, max_score=5, is_correct=False, correct_chars=3)
+        AttemptScore(score=5, max_score=5, is_correct=False)
 
 
 def test_attempt_score_out_of_range():
     """score > max_score must raise ValueError (D-02 range enforcement)."""
     with pytest.raises(ValueError):
-        AttemptScore(score=6, max_score=5, is_correct=False, correct_chars=0)
+        AttemptScore(score=6, max_score=5, is_correct=False)
 
 
 def test_attempt_score_score_zero_valid():
     """score=0 with is_correct=False is a valid construction (D-02: 0..output_length)."""
-    s = AttemptScore(score=0, max_score=5, is_correct=False, correct_chars=0)
+    s = AttemptScore(score=0, max_score=5, is_correct=False)
     assert s.score == 0
 
 
 def test_attempt_score_perfect_correct():
     """score==max_score with is_correct=True constructs and is_correct==True (D-03)."""
-    s = AttemptScore(score=5, max_score=5, is_correct=True, correct_chars=5)
+    s = AttemptScore(score=5, max_score=5, is_correct=True)
     assert s.is_correct is True
 
 
@@ -68,7 +68,7 @@ def test_difficulty_config_one_length_rejected():
 def test_dataclasses_are_frozen_score():
     """Mutating AttemptScore.score after construction raises FrozenInstanceError (D-09)."""
     from dataclasses import FrozenInstanceError
-    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
+    s = AttemptScore(score=3, max_score=5, is_correct=False)
     with pytest.raises(FrozenInstanceError):
         s.score = 4  # type: ignore[misc]
 
@@ -87,7 +87,7 @@ def test_attempt_score_no_ciphertext_field():
     The information boundary requires that AttemptScore contains only aggregate
     score data — never the cipher key, ground-truth ciphertext, or per-position shifts.
     """
-    s = AttemptScore(score=3, max_score=5, is_correct=False, correct_chars=2)
+    s = AttemptScore(score=3, max_score=5, is_correct=False)
     assert not hasattr(s, "ciphertext"), "AttemptScore must not have a 'ciphertext' field"
     assert not hasattr(s, "key"), "AttemptScore must not have a 'key' field"
     assert not hasattr(s, "shifts"), "AttemptScore must not have a 'shifts' field"
@@ -147,3 +147,23 @@ def test_difficulty_config_defaults_backward_compat():
     d = DifficultyConfig()
     assert d.alphabet == "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     assert d.output_length == 5
+
+
+# --- AttemptScore: encoded_output field tests ---
+
+def test_attempt_score_encoded_output_default_is_none():
+    """AttemptScore.encoded_output defaults to None (no extra arg required)."""
+    s = AttemptScore(score=3, max_score=5, is_correct=False)
+    assert s.encoded_output is None
+
+
+def test_attempt_score_encoded_output_stores_value():
+    """AttemptScore with encoded_output='BCDEF' stores that value."""
+    s = AttemptScore(score=3, max_score=5, is_correct=False, encoded_output="BCDEF")
+    assert s.encoded_output == "BCDEF"
+
+
+def test_attempt_score_encoded_output_not_validated_in_post_init():
+    """encoded_output is informational — no validation in __post_init__; arbitrary str allowed."""
+    s = AttemptScore(score=3, max_score=5, is_correct=False, encoded_output="XYZ")
+    assert s.encoded_output == "XYZ"

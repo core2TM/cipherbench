@@ -77,7 +77,7 @@ def test_outcome_transitions_to_success(tmp_sessions_dir, mock_adapter):
     runner = create_model_session(seed=42, difficulty=EASY, adapter=mock_adapter, output_dir=tmp_sessions_dir)
     # Patch engine to report correct on the first scored probe
     runner._engine.score_attempt = MagicMock(
-        return_value=AttemptScore(score=5, max_score=5, is_correct=True, correct_chars=5)
+        return_value=AttemptScore(score=5, max_score=5, is_correct=True)
     )
     result = runner.run()
 

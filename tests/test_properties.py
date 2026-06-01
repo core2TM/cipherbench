@@ -77,7 +77,6 @@ def test_attempt_score_invariant(score: int, max_score: int) -> None:
     """AttemptScore(score, max_score=5, is_correct=(score==5)) always satisfies invariants."""
     result = AttemptScore(
         score=score, max_score=max_score, is_correct=(score == max_score),
-        correct_chars=score,  # use score as a valid proxy (0..max_score)
     )
     assert result.is_correct == (result.score == result.max_score)
 

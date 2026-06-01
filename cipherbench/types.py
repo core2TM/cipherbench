@@ -7,6 +7,7 @@ rules are locked by decisions D-01 through D-06 and D-09.
 NO imports from cipherbench.engine — this is the pure data layer.
 """
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -75,16 +76,16 @@ class AttemptScore:
     is_correct : bool
         True iff score == max_score (exact match, binary). D-03.
         Must be consistent with score — a mismatch raises ValueError.
-    correct_chars : int
-        Number of characters in ``guess`` that appear anywhere in the ground truth
-        (multiset intersection — independent of position). Display/hint only; not
-        used in efficiency score calculation.
+    encoded_output : Optional[str]
+        The encoded form of the probe string, surfaced only when score_attempt is
+        called with show_encoding=True (transparent mode).  None in normal mode —
+        the information boundary (RULE-04) is preserved by default.
     """
 
     score: int
     max_score: int
     is_correct: bool
-    correct_chars: int
+    encoded_output: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not (0 <= self.score <= self.max_score):
@@ -93,7 +94,4 @@ class AttemptScore:
             )
         if self.is_correct != (self.score == self.max_score):
             raise ValueError("is_correct must match score == max_score")
-        if not (0 <= self.correct_chars <= self.max_score):
-            raise ValueError(
-                f"correct_chars {self.correct_chars} out of range 0..{self.max_score}"
-            )
+        # encoded_output is informational — no validation applied here.

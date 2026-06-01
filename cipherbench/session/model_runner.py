@@ -134,7 +134,6 @@ class ModelSessionRunner:
                     "score": None,
                     "max_score": max_score,
                     "is_correct": False,
-                    "correct_chars": None,
                     "raw_response": raw,
                     "extraction_failed": True,
                 }
@@ -149,7 +148,6 @@ class ModelSessionRunner:
                 "score": attempt_score.score,
                 "max_score": attempt_score.max_score,
                 "is_correct": attempt_score.is_correct,
-                "correct_chars": attempt_score.correct_chars,
                 "raw_response": raw,
                 "extraction_failed": False,
             }
