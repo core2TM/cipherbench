@@ -1,5 +1,4 @@
-"""Integration tests — SESS-04: 50 sequential sessions from seed=42 produce identical outcomes."""
-from __future__ import annotations
+"""Integration tests — SESS-04: 50 sequential sessions from level 1 produce identical outcomes."""
 
 import random
 
@@ -8,7 +7,7 @@ import pytest
 # Guard: skip entire module if model_runner not yet implemented
 pytest.importorskip("cipherbench.session.model_runner")
 
-from cipherbench.puzzle import EASY
+from cipherbench.puzzle import create_engine_for_level
 from cipherbench.session.model_runner import create_model_session
 from tests.conftest import FixedResponseAdapter
 
@@ -19,16 +18,14 @@ from tests.conftest import FixedResponseAdapter
 
 
 def test_fifty_sequential_sessions_are_deterministic(tmp_path):
-    """SESS-04: 50 sequential sessions from seed=42 with FixedResponseAdapter all have identical outcomes."""
-    SEED = 42
-    RESPONSE = "PROBE: ABCDE"
+    """SESS-04: 50 sequential sessions from level=1 with FixedResponseAdapter all have identical outcomes."""
+    RESPONSE = "PROBE: TUVWX"
     reference_outcome = None
 
     for run in range(50):
         adapter = FixedResponseAdapter(RESPONSE)
         runner = create_model_session(
-            seed=SEED,
-            difficulty=EASY,
+            level=1,
             adapter=adapter,
             output_dir=tmp_path / f"run_{run}",
         )
@@ -43,25 +40,17 @@ def test_fifty_sequential_sessions_are_deterministic(tmp_path):
 
 
 def test_different_seeds_produce_different_puzzle_state(tmp_path):
-    """SESS-04: Different seeds must produce different internal puzzle configurations.
+    """SESS-04: Different levels must produce different internal puzzle configurations.
 
-    Verifies seed isolation at the engine level: base_shifts must differ between
-    seeds. After CR-01 fix the encoded-guess scoring means aggregate scores can
-    collide for some probe/seed pairs even when base_shifts differ (the mapping is
-    many-to-one).  The meaningful isolation guarantee is that the cipher parameters
-    themselves are distinct, not that every probe produces a different score.
+    Verifies level isolation at the engine level: ground_truth must differ between
+    levels 1 and 2.
     """
-    from cipherbench.engine.rule_engine import create_rule_engine
+    engine_1 = create_engine_for_level(1)
+    engine_2 = create_engine_for_level(2)
 
-    SEED_A = 42
-    SEED_B = 99
-
-    engine_a = create_rule_engine(seed=SEED_A, difficulty=EASY)
-    engine_b = create_rule_engine(seed=SEED_B, difficulty=EASY)
-
-    assert engine_a._base_shifts != engine_b._base_shifts, (
-        f"Seeds {SEED_A} and {SEED_B} produced identical base_shifts {engine_a._base_shifts}. "
-        "Seed isolation may be broken."
+    assert engine_1._ground_truth != engine_2._ground_truth, (
+        f"Level 1 and Level 2 produced identical _ground_truth: '{engine_1._ground_truth}'. "
+        "Level isolation may be broken."
     )
 
 
@@ -69,10 +58,9 @@ def test_session_runner_does_not_pollute_global_random(tmp_path):
     """D-11: ModelSessionRunner.run() must not touch the global random state."""
     state_before = random.getstate()
 
-    adapter = FixedResponseAdapter("PROBE: ABCDE")
+    adapter = FixedResponseAdapter("PROBE: TUVWX")
     runner = create_model_session(
-        seed=42,
-        difficulty=EASY,
+        level=1,
         adapter=adapter,
         output_dir=tmp_path,
     )

@@ -5,32 +5,25 @@ All engine fixtures use scope="function" (default) to ensure each test
 gets a fresh, isolated instance (prevents state bleed — PITFALLS.md C-3).
 """
 import pytest
-from cipherbench.types import DifficultyConfig
-from cipherbench.engine.rule_engine import create_rule_engine
+from cipherbench.puzzle import create_engine_for_level
 
 
 @pytest.fixture
-def default_difficulty() -> DifficultyConfig:
-    """Standard A-Z alphabet with output_length=5. Used as the default config."""
-    return DifficultyConfig()
+def rule_engine_seed_42():
+    """Fresh RuleEngine for Level 1 — the canonical test engine.
 
-
-@pytest.fixture
-def rule_engine_seed_42(default_difficulty: DifficultyConfig):
-    """Fresh RuleEngine for seed 42 — the canonical test seed.
-
-    Function-scoped (default): each test gets an isolated instance with _round=1.
+    Function-scoped (default): each test gets an isolated instance.
     """
-    return create_rule_engine(seed=42, difficulty=default_difficulty)
+    return create_engine_for_level(1)
 
 
 @pytest.fixture
-def rule_engine_seed_0(default_difficulty: DifficultyConfig):
-    """Fresh RuleEngine for seed 0 — boundary/edge case seed.
+def rule_engine_seed_0():
+    """Fresh RuleEngine for Level 1 — boundary/edge case fixture.
 
-    Function-scoped (default): each test gets an isolated instance with _round=1.
+    Function-scoped (default): each test gets an isolated instance.
     """
-    return create_rule_engine(seed=0, difficulty=default_difficulty)
+    return create_engine_for_level(1)
 
 
 # ---------------------------------------------------------------------------

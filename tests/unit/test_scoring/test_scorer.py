@@ -80,7 +80,7 @@ def test_efficiency_score_success():
     session = _make_session(outcome="success", attempts_used=1)
     assert efficiency_score(session) == 1.0
     session3 = _make_session(outcome="success", attempts_used=3)
-    assert efficiency_score(session3) == pytest.approx((15 - 3 + 1) / 15)
+    assert efficiency_score(session3) == pytest.approx((5 - 3 + 1) / 5)
 
 
 def test_efficiency_score_failure():
@@ -151,7 +151,7 @@ def test_score_command_help():
     assert result.exit_code == 0
     assert "--model" in result.output
     assert "--sessions-dir" in result.output
-    assert "--difficulty" in result.output
+    assert "--level" in result.output
     assert "--output-file" in result.output
     assert "--human" in result.output
 

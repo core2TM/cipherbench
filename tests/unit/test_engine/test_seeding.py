@@ -3,7 +3,7 @@
 These tests verify:
   GEN-04: No global random.seed() calls anywhere in the generation path.
           All randomness goes through isolated random.Random(seed) instances.
-  SESS-04: 50 sequential calls to create_rule_engine(seed=42) followed by
+  SESS-04: 50 sequential calls to create_engine_for_level(1) followed by
            score_attempt('ABCDE') × 5 all produce identical score sequences.
 
 Source references:
@@ -11,7 +11,6 @@ Source references:
   RESEARCH.md §Common Pitfalls — Pitfall 2 (RNG Non-Determinism)
   CONTEXT.md D-11 (explicit rng threading)
 """
-from __future__ import annotations
 
 import inspect
 import random
@@ -20,8 +19,7 @@ import pytest
 
 import cipherbench.engine.rule_engine as rule_engine_mod
 import cipherbench.engine.layers as layers_mod
-from cipherbench.types import DifficultyConfig
-from cipherbench.engine.rule_engine import create_rule_engine
+from cipherbench.puzzle import create_engine_for_level
 
 
 # ---------------------------------------------------------------------------
@@ -65,24 +63,22 @@ def test_no_module_level_random_calls():
 
 
 # ---------------------------------------------------------------------------
-# SESS-04: Determinism — 50 sequential runs with same seed
+# SESS-04: Determinism — 50 sequential runs from same level
 # ---------------------------------------------------------------------------
 
 
 def test_fifty_sequential_runs_are_deterministic():
-    """SESS-04: 50 sequential calls with seed=42 must produce identical score sequences.
+    """SESS-04: 50 sequential calls to create_engine_for_level(1) must produce identical score sequences.
 
-    Follows the exact pattern from RESEARCH.md §Code Examples — 50-Run Determinism Test.
-    Verifies both that create_rule_engine is deterministic and that no state bleeds
+    Verifies that the fixed-level design is deterministic and that no state bleeds
     between calls (fresh instances only).
     """
-    SEED = 42
     PROBE = "ABCDE"
     ROUNDS = 5
     reference_scores = None
 
     for run in range(50):
-        engine = create_rule_engine(seed=SEED, difficulty=DifficultyConfig())
+        engine = create_engine_for_level(1)
         scores = [engine.score_attempt(PROBE).score for _ in range(ROUNDS)]
         if reference_scores is None:
             reference_scores = scores
@@ -92,48 +88,45 @@ def test_fifty_sequential_runs_are_deterministic():
 
 
 # ---------------------------------------------------------------------------
-# Differentiation: different seeds produce different scores
+# Differentiation: different levels produce different scores
 # ---------------------------------------------------------------------------
 
 
 def test_different_seeds_produce_different_scores():
-    """Different seeds must produce different score sequences with high probability.
+    """Different levels must produce different encoded outputs for the same probe.
 
-    Uses seed=1 and seed=2. Runs 5 rounds each and asserts at least one round differs.
-    Probe 'AABCD' is empirically verified to score 1/5 for seed=1 and 0/5 for seed=2
-    across all 5 rounds due to differing base_shifts and random ground_truth between seeds.
+    Level 1 and Level 2 use different cipher substitutions — same probe should
+    encode to different outputs.
     """
-    d = DifficultyConfig()
-    engine_1 = create_rule_engine(seed=1, difficulty=d)
-    engine_2 = create_rule_engine(seed=2, difficulty=d)
+    engine_1 = create_engine_for_level(1)
+    engine_2 = create_engine_for_level(2)
 
-    PROBE = "ZZZZZ"
-    ROUNDS = 5
-    scores_1 = [engine_1.score_attempt(PROBE).score for _ in range(ROUNDS)]
-    scores_2 = [engine_2.score_attempt(PROBE).score for _ in range(ROUNDS)]
+    PROBE = "ABCDE"
+    result_1 = engine_1.score_attempt(PROBE)
+    result_2 = engine_2.score_attempt(PROBE)
 
-    assert scores_1 != scores_2, (
-        f"Seed 1 and seed 2 produced identical score sequences {scores_1}. "
-        "This is astronomically unlikely — check that create_rule_engine uses the seed."
+    assert result_1.encoded_output != result_2.encoded_output, (
+        "Level 1 and Level 2 produced identical encoded outputs. "
+        "This indicates the levels are not using different ciphers."
     )
 
 
 # ---------------------------------------------------------------------------
-# D-11: Global random state is not polluted by create_rule_engine
+# D-11: Global random state is not polluted by create_engine_for_level
 # ---------------------------------------------------------------------------
 
 
 def test_rng_does_not_pollute_global_random():
-    """D-11: create_rule_engine must not touch the global random state.
+    """D-11: create_engine_for_level must not touch the global random state.
 
-    Saves the global random state before calling create_rule_engine(seed=42) and
-    asserts it is unchanged afterward. This directly verifies that the factory uses
-    random.Random(seed) (isolated instance) rather than random.seed(seed) (global).
+    Saves the global random state before calling create_engine_for_level(1) and
+    asserts it is unchanged afterward. The fixed-level design uses no RNG, so
+    global state must be unaffected.
     """
     state_before = random.getstate()
-    create_rule_engine(seed=42, difficulty=DifficultyConfig())
+    create_engine_for_level(1)
     state_after = random.getstate()
     assert state_after == state_before, (
-        "Global random.getstate() changed after create_rule_engine(). "
-        "Factory must use random.Random(seed) — not random.seed(seed) or random.*() calls."
+        "Global random.getstate() changed after create_engine_for_level(). "
+        "Factory must not touch global random state."
     )

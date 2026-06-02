@@ -1,5 +1,4 @@
 """Unit tests for HumanSessionRunner — SESS-02."""
-from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -11,7 +10,7 @@ import pytest
 pytest.importorskip("cipherbench.session.human_runner")
 
 from cipherbench.session.human_runner import HumanSessionRunner, create_human_session  # noqa: E402
-from cipherbench.puzzle import EASY  # noqa: E402
+from cipherbench.puzzle import ALPHABET  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -22,19 +21,15 @@ from cipherbench.puzzle import EASY  # noqa: E402
 def test_human_session_json_schema_matches_model(tmp_sessions_dir):
     """SESS-02: Human session JSON uses the same top-level schema as model sessions (D-11).
 
-    Patches typer.prompt to supply 5 valid EASY probes then a final answer.
-    Asserts runner_type='human', model=None, player_name='alice', and that all
-    D-11 top-level fields are present in the written JSON file.
+    Patches typer.prompt to supply 5 valid probes from the Level 1 alphabet (A-Z)
+    then a final answer. Asserts runner_type='human', model=None, player_name='alice',
+    and that all D-11 top-level fields are present in the written JSON file.
     """
-    # EASY alphabet is "ABCDEFGHIJ", output_length=5
-    # Supply 5 valid probes + final answer prompt
-    # Patch MAX_ATTEMPTS to 5 so the loop stops after 5 probes (matching mock data)
+    # Level 1 alphabet is A-Z; supply 5 valid probes + final answer prompt
     probe_responses = ["ABCDE", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses), \
-         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
+    with patch("typer.prompt", side_effect=probe_responses):
         runner = create_human_session(
-            seed=42,
-            difficulty=EASY,
+            level=1,
             player_name="alice",
             output_dir=tmp_sessions_dir,
         )
@@ -44,9 +39,8 @@ def test_human_session_json_schema_matches_model(tmp_sessions_dir):
     assert session_record["runner_type"] == "human"
     assert session_record["model"] is None
     assert session_record["player_name"] == "alice"
-    assert session_record["seed"] == 42
-    assert "difficulty" in session_record
-    assert "puzzle_hash" in session_record
+    assert session_record["level"] == 1
+    assert "ground_truth" in session_record
     assert "outcome" in session_record
     assert "final_answer" in session_record
     assert "attempts" in session_record
@@ -74,17 +68,15 @@ def test_human_session_json_schema_matches_model(tmp_sessions_dir):
 def test_human_runner_rejects_invalid_length_input(tmp_sessions_dir):
     """SESS-02: HumanSessionRunner re-prompts (does not raise) on wrong-length input.
 
-    Patches typer.prompt so that the first call returns "AB" (too short for EASY
-    output_length=5), and subsequent calls return valid 5-char EASY probes.
+    Patches typer.prompt so that the first call returns "AB" (too short),
+    and subsequent calls return valid 5-char probes from the Level 1 alphabet.
     Asserts no ValueError is raised and the attempts list contains valid entries.
     """
-    # First prompt: "AB" (invalid, too short), then 5 valid probes + final answer
+    # First prompt: "AB" (invalid, too short), then valid probes
     probe_responses = ["AB", "ABCDE", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses), \
-         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
+    with patch("typer.prompt", side_effect=probe_responses):
         runner = create_human_session(
-            seed=42,
-            difficulty=EASY,
+            level=1,
             player_name="tester",
             output_dir=tmp_sessions_dir,
         )
@@ -94,11 +86,11 @@ def test_human_runner_rejects_invalid_length_input(tmp_sessions_dir):
     # All attempts must have valid probes (invalid input consumed re-prompt, not attempt budget)
     valid_attempts = [a for a in session_record["attempts"] if not a["extraction_failed"]]
     assert len(valid_attempts) >= 1
-    # Probe field must be 5 chars from EASY alphabet
+    # Probe field must be 5 chars from the Level 1 alphabet (A-Z)
     for attempt in valid_attempts:
         assert attempt["probe"] is not None
         assert len(attempt["probe"]) == 5
-        assert all(c in EASY.alphabet for c in attempt["probe"])
+        assert all(c in ALPHABET for c in attempt["probe"])
 
 
 # ---------------------------------------------------------------------------
@@ -109,25 +101,22 @@ def test_human_runner_rejects_invalid_length_input(tmp_sessions_dir):
 def test_human_runner_rejects_chars_outside_alphabet(tmp_sessions_dir):
     """SESS-02: HumanSessionRunner re-prompts (does not raise) when chars outside alphabet.
 
-    EASY alphabet is 'ABCDEFGHIJ'. 'K' is outside this alphabet.
-    First prompt returns 'ABCDK' (K is outside EASY alphabet).
-    Second prompt returns 'ABCDA' (valid EASY chars).
+    Level 1 uses the full A-Z alphabet. Test that invalid chars cause re-prompt.
+    First prompt returns 'ABCD1' (digit '1' is outside A-Z alphabet).
+    Second prompt returns 'ABCDA' (valid).
     Asserts no ValueError and re-prompt occurred without crash.
     """
-    # ABCDK: K is outside EASY alphabet "ABCDEFGHIJ"
-    # Then provide enough valid responses to complete the session
-    probe_responses = ["ABCDK", "ABCDA", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
-    with patch("typer.prompt", side_effect=probe_responses), \
-         patch("cipherbench.session.human_runner.MAX_ATTEMPTS", 5):
+    # ABCD1: '1' is outside the A-Z alphabet
+    probe_responses = ["ABCD1", "ABCDA", "BCDEF", "CDEFG", "DEFGH", "EFGHI", "ABCDE"]
+    with patch("typer.prompt", side_effect=probe_responses):
         runner = create_human_session(
-            seed=42,
-            difficulty=EASY,
+            level=1,
             player_name="tester2",
             output_dir=tmp_sessions_dir,
         )
-        # Must not raise — re-prompt handles the invalid 'K'
+        # Must not raise — re-prompt handles the invalid char
         session_record = runner.run()
 
-    # First valid attempt must be 'ABCDA' (not 'ABCDK')
+    # First valid attempt must be 'ABCDA' (not 'ABCD1')
     assert len(session_record["attempts"]) >= 1
     assert session_record["attempts"][0]["probe"] == "ABCDA"

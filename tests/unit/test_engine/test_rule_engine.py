@@ -3,14 +3,12 @@
 Covers: information boundary enforcement (RULE-04, D-09), input validation (ASVS V5),
 state evolution (RULE-01), and factory isolation (D-10).
 """
-from __future__ import annotations
 
 import inspect
 
 import pytest
 
-from cipherbench.types import DifficultyConfig
-from cipherbench.engine.rule_engine import create_rule_engine
+from cipherbench.puzzle import create_engine_for_level
 
 
 # ---------------------------------------------------------------------------
@@ -74,31 +72,27 @@ def test_score_attempt_rejects_invalid_chars(rule_engine_seed_42):
 
 
 # ---------------------------------------------------------------------------
-# State evolution test — RULE-01
+# State evolution tests
 # ---------------------------------------------------------------------------
 
 
 def test_factory_produces_fresh_instances():
-    """Two engines from the same seed must produce equal score_attempt results at round 1."""
-    d = DifficultyConfig()
-    engine_a = create_rule_engine(seed=42, difficulty=d)
-    engine_b = create_rule_engine(seed=42, difficulty=d)
+    """Two engines from level 1 must produce equal score_attempt results."""
+    engine_a = create_engine_for_level(1)
+    engine_b = create_engine_for_level(1)
     result_a = engine_a.score_attempt("ABCDE")
     result_b = engine_b.score_attempt("ABCDE")
     assert result_a == result_b
 
 
-def test_state_layer_is_fixed_across_rounds():
-    """The encoded target is the same every round — encoding is round-independent.
-
-    Same probe always produces the same encoded output regardless of round number.
-    """
-    engine = create_rule_engine(seed=42, difficulty=DifficultyConfig())
-    encoded_1 = engine._encode_for_round(1)
-    encoded_2 = engine._encode_for_round(2)
-    assert encoded_1 == encoded_2, (
-        "Encoding should be round-independent: same output regardless of round"
-    )
+def test_encoding_is_deterministic():
+    """Same probe on two fresh level-1 engines always returns identical score and encoding."""
+    engine = create_engine_for_level(1)
+    engine2 = create_engine_for_level(1)
+    result_a = engine.score_attempt("ABCDE")
+    result_b = engine2.score_attempt("ABCDE")
+    assert result_a.score == result_b.score
+    assert result_a.encoded_output == result_b.encoded_output
 
 
 # ---------------------------------------------------------------------------
@@ -107,27 +101,24 @@ def test_state_layer_is_fixed_across_rounds():
 
 
 def test_instance_round_counter_is_independent():
-    """Advancing engine_a does not affect engine_b created from the same seed.
+    """Advancing engine_a does not affect engine_b created from the same level.
 
-    engine_a consumes 3 rounds, then engine_b (fresh from same seed) round 1 score
-    must match engine_a's original round 1 score.
+    engine_a consumes 3 attempts, then engine_b (fresh from same level) attempt 1 score
+    must match engine_a's original attempt 1 score.
     """
-    d = DifficultyConfig()
-    # Create engine_c to record the original round 1 score before any state mutation
-    engine_c = create_rule_engine(seed=42, difficulty=d)
-    original_round_1 = engine_c.score_attempt("ABCDE")
+    # Create engine_c to record the original attempt 1 score before any state mutation
+    engine_c = create_engine_for_level(1)
+    original_result = engine_c.score_attempt("ABCDE")
 
-    # Advance engine_a by 3 rounds
-    engine_a = create_rule_engine(seed=42, difficulty=d)
-    engine_a.score_attempt("ABCDE")  # round 1
-    engine_a.score_attempt("ABCDE")  # round 2
-    engine_a.score_attempt("ABCDE")  # round 3
+    # Advance engine_a by 3 attempts
+    engine_a = create_engine_for_level(1)
+    engine_a.score_attempt("ABCDE")  # attempt 1
+    engine_a.score_attempt("ABCDE")  # attempt 2
+    engine_a.score_attempt("ABCDE")  # attempt 3
 
-    # Fresh engine_b from same seed — its round 1 must match original_round_1
-    engine_b = create_rule_engine(seed=42, difficulty=d)
-    fresh_round_1 = engine_b.score_attempt("ABCDE")
-    assert fresh_round_1 == original_round_1, (
-        "State bleed: engine_b round 1 differs from original round 1 after engine_a was advanced"
+    # Fresh engine_b from same level — its attempt 1 must match original_result
+    engine_b = create_engine_for_level(1)
+    fresh_result = engine_b.score_attempt("ABCDE")
+    assert fresh_result == original_result, (
+        "State bleed: engine_b attempt 1 differs from original after engine_a was advanced"
     )
-
-

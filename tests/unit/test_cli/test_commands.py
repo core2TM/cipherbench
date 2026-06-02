@@ -1,5 +1,4 @@
 """CLI integration tests using Typer CliRunner — SESS-01, SESS-02."""
-from __future__ import annotations
 
 import pytest
 
@@ -26,10 +25,10 @@ def test_run_command_shows_model_flag():
     assert "--model" in result.output
 
 
-def test_run_command_shows_seed_flag():
-    """cipherbench run --help output includes --seed flag."""
+def test_run_command_shows_level_flag():
+    """cipherbench run --help output includes --level flag."""
     result = CliRunner().invoke(app, ["run", "--help"])
-    assert "--seed" in result.output
+    assert "--level" in result.output
 
 
 # ---------------------------------------------------------------------------
@@ -49,14 +48,7 @@ def test_play_command_shows_player_name_flag():
     assert "--player-name" in result.output
 
 
-def test_play_command_shows_seed_flag():
-    """cipherbench play --help output includes --seed flag."""
+def test_play_command_shows_output_dir_flag():
+    """cipherbench play --help output includes --output-dir flag."""
     result = CliRunner().invoke(app, ["play", "--help"])
-    assert "--seed" in result.output
-
-
-
-def test_play_command_shows_length_flag():
-    """cipherbench play --help output includes --length flag (w7g)."""
-    result = CliRunner().invoke(app, ["play", "--help"])
-    assert "--length" in result.output
+    assert "--output-dir" in result.output

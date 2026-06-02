@@ -1,5 +1,4 @@
 """Unit tests for PromptBuilder — D-03, D-04."""
-from __future__ import annotations
 
 import pytest
 
@@ -18,13 +17,13 @@ ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 def test_system_prompt_contains_probe_format():
     """D-03: System prompt includes the PROBE: XXXXX format instruction."""
-    prompt = build_system_prompt(ALPHABET, 5)
+    prompt = build_system_prompt(ALPHABET, 5, "ABCDE")
     assert "PROBE:" in prompt
 
 
 def test_system_prompt_contains_no_strategy_hints():
     """D-03: System prompt must not contain worked examples or strategy hints."""
-    prompt = build_system_prompt(ALPHABET, 5)
+    prompt = build_system_prompt(ALPHABET, 5, "ABCDE")
     prompt_lower = prompt.lower()
     forbidden_words = ["example", "strategy", "hint", "tip", "suggest"]
     for word in forbidden_words:

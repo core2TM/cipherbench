@@ -41,9 +41,9 @@ def test_attempt_score_perfect_correct():
 
 
 def test_difficulty_config_defaults():
-    """DifficultyConfig() uses alphabet=A-Z and output_length=5 (D-05, D-06)."""
+    """DifficultyConfig() uses alphabet=A-J and output_length=5 (D-05, D-06)."""
     d = DifficultyConfig()
-    assert d.alphabet == "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    assert d.alphabet == "ABCDEFGHIJ"
     assert d.output_length == 5
 
 
@@ -91,36 +91,3 @@ def test_attempt_score_no_ciphertext_field():
     assert not hasattr(s, "ciphertext"), "AttemptScore must not have a 'ciphertext' field"
     assert not hasattr(s, "key"), "AttemptScore must not have a 'key' field"
     assert not hasattr(s, "shifts"), "AttemptScore must not have a 'shifts' field"
-
-
-# --- DifficultyConfig: state_change_rate tests (D-02) ---
-
-def test_difficulty_config_state_change_rate_default():
-    """DifficultyConfig().state_change_rate defaults to 1.0 (D-02)."""
-    assert DifficultyConfig().state_change_rate == 1.0
-
-
-def test_difficulty_config_state_change_rate_custom():
-    """DifficultyConfig(state_change_rate=2.0) stores the custom value."""
-    assert DifficultyConfig(state_change_rate=2.0).state_change_rate == 2.0
-
-
-def test_difficulty_config_state_change_rate_invalid_zero():
-    """state_change_rate=0.0 must raise ValueError (must be positive)."""
-    with pytest.raises(ValueError):
-        DifficultyConfig(state_change_rate=0.0)
-
-
-def test_difficulty_config_state_change_rate_invalid_negative():
-    """state_change_rate=-0.5 must raise ValueError (must be positive)."""
-    with pytest.raises(ValueError):
-        DifficultyConfig(state_change_rate=-0.5)
-
-
-def test_difficulty_config_defaults_backward_compat():
-    """DifficultyConfig() still has alphabet=A-Z and output_length=5 (existing behavior unchanged)."""
-    d = DifficultyConfig()
-    assert d.alphabet == "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    assert d.output_length == 5
-
-

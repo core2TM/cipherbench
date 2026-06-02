@@ -1,6 +1,6 @@
 """Hypothesis property-based tests — GEN-04 and phase gate.
 
-Tests invariants that must hold for any seed × guess combination.
+Tests invariants that must hold for any guess combination.
 Uses Hypothesis to auto-generate adversarial inputs and find edge cases
 that hand-written tests miss.
 
@@ -8,15 +8,14 @@ Source references:
   RESEARCH.md §Code Examples — Hypothesis Strategy Sketch
   PATTERNS.md §tests/test_properties.py — Hypothesis strategy sketches
   RULE-04: score_attempt never reveals private state
-  GEN-04: same seed → same score for same probe (determinism)
+  GEN-04: same level → same score for same probe (determinism)
 """
-from __future__ import annotations
 
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from cipherbench.types import AttemptScore, DifficultyConfig
-from cipherbench.engine.rule_engine import create_rule_engine
+from cipherbench.types import AttemptScore
+from cipherbench.puzzle import create_engine_for_level
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -27,13 +26,12 @@ ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 @given(
-    seed=st.integers(min_value=0, max_value=2**32 - 1),
     guess=st.text(alphabet=ALPHABET, min_size=5, max_size=5),
 )
 @settings(max_examples=100)
-def test_score_attempt_never_reveals_private_state(seed: int, guess: str) -> None:
-    """For any seed and guess, AttemptScore must not expose cipher key, ciphertext, or shifts."""
-    engine = create_rule_engine(seed=seed, difficulty=DifficultyConfig())
+def test_score_attempt_never_reveals_private_state(guess: str) -> None:
+    """For any guess, AttemptScore must not expose cipher key, ciphertext, or shifts."""
+    engine = create_engine_for_level(1)
     result = engine.score_attempt(guess)
     # Score must be a valid integer in 0..5
     assert isinstance(result.score, int)
@@ -47,20 +45,18 @@ def test_score_attempt_never_reveals_private_state(seed: int, guess: str) -> Non
 
 
 # ---------------------------------------------------------------------------
-# GEN-04 + SESS-04: Same seed + same probe = same score
+# GEN-04 + SESS-04: Same level + same probe = same score
 # ---------------------------------------------------------------------------
 
 
 @given(
-    seed=st.integers(min_value=0, max_value=2**32 - 1),
     probe=st.text(alphabet=ALPHABET, min_size=5, max_size=5),
 )
 @settings(max_examples=100)
-def test_same_seed_same_probe_same_score(seed: int, probe: str) -> None:
-    """Two engines from the same seed must return equal AttemptScore for the same probe at round 1."""
-    d = DifficultyConfig()
-    engine_1 = create_rule_engine(seed=seed, difficulty=d)
-    engine_2 = create_rule_engine(seed=seed, difficulty=d)
+def test_same_seed_same_probe_same_score(probe: str) -> None:
+    """Two engines from the same level must return equal AttemptScore for the same probe."""
+    engine_1 = create_engine_for_level(1)
+    engine_2 = create_engine_for_level(1)
     assert engine_1.score_attempt(probe) == engine_2.score_attempt(probe)
 
 
@@ -82,18 +78,17 @@ def test_attempt_score_invariant(score: int, max_score: int) -> None:
 
 
 # ---------------------------------------------------------------------------
-# score in valid range for any seed/guess
+# score in valid range for any guess
 # ---------------------------------------------------------------------------
 
 
 @given(
-    seed=st.integers(min_value=0, max_value=2**32 - 1),
     guess=st.text(alphabet=ALPHABET, min_size=5, max_size=5),
 )
 @settings(max_examples=100)
-def test_score_in_valid_range(seed: int, guess: str) -> None:
-    """result.score is always in range 0..max_score for any seed and guess."""
-    engine = create_rule_engine(seed=seed, difficulty=DifficultyConfig())
+def test_score_in_valid_range(guess: str) -> None:
+    """result.score is always in range 0..max_score for any guess."""
+    engine = create_engine_for_level(1)
     result = engine.score_attempt(guess)
     assert 0 <= result.score <= result.max_score
 
@@ -104,12 +99,11 @@ def test_score_in_valid_range(seed: int, guess: str) -> None:
 
 
 @given(
-    seed=st.integers(min_value=0, max_value=2**32 - 1),
     guess=st.text(alphabet=ALPHABET, min_size=5, max_size=5),
 )
 @settings(max_examples=100)
-def test_is_correct_iff_score_equals_max(seed: int, guess: str) -> None:
+def test_is_correct_iff_score_equals_max(guess: str) -> None:
     """result.is_correct is exactly (result.score == result.max_score) for any input."""
-    engine = create_rule_engine(seed=seed, difficulty=DifficultyConfig())
+    engine = create_engine_for_level(1)
     result = engine.score_attempt(guess)
     assert result.is_correct == (result.score == result.max_score)
