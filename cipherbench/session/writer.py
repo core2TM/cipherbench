@@ -14,8 +14,6 @@ Design decisions:
   D-10  Flat sessions/ directory; writer accepts caller-supplied output_dir
   D-17  Inline checkpoint: write in_progress at init, overwrite after every attempt
 """
-from __future__ import annotations
-
 import json
 import logging
 import os

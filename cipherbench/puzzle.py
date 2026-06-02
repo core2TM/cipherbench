@@ -13,9 +13,7 @@ Level cipher rules:
   Level 2: ±7 alternating — even chars +7, odd chars -7 mod 26  (5 attempts)
   Level 3: ±7 alternating — same as Level 2  (5 attempts)
 """
-from __future__ import annotations
-
-from cipherbench.engine.layers import ATBASH, ALTERNATING7, CYCLIC5, GROUPED, STAIRCASE
+from cipherbench.engine.layers import CYCLIC5, GROUPED, STAIRCASE
 from cipherbench.engine.rule_engine import RuleEngine, create_rule_engine
 
 ALPHABET: str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"

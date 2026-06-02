@@ -14,7 +14,7 @@ from typing import Annotated, Optional
 
 import typer
 
-from cipherbench.puzzle import get_ground_truth, get_max_attempts, ALPHABET, OUTPUT_LENGTH, LEVEL_CONFIGS
+from cipherbench.puzzle import get_ground_truth, ALPHABET, LEVEL_CONFIGS
 from cipherbench.session.model_runner import create_model_session
 from cipherbench.session.human_runner import create_human_session
 from cipherbench.adapters.litellm_adapter import LiteLLMAdapter

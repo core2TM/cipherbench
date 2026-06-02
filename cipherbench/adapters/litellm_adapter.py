@@ -21,8 +21,6 @@ Private attribute convention (mirrors rule_engine.py D-09):
   Single-underscore convention (_model, _extra_kwargs) is used rather than
   double-underscore name-mangling by deliberate choice.
 """
-from __future__ import annotations
-
 import logging
 
 import litellm

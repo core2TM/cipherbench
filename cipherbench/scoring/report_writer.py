@@ -7,8 +7,6 @@ Design decisions:
   D-12  JSON report structure: model, sessions_scored, by_difficulty, totals, generated_at
   D-12  agi_proximity stored as null (not the string "N/A") in JSON output
 """
-from __future__ import annotations
-
 import json
 import logging
 import os

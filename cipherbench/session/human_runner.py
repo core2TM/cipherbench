@@ -8,8 +8,6 @@ Public names:
 The ground_truth (cipher target) is shown to the player at session start.
 After each probe the player sees their encoded output alongside the score.
 """
-from __future__ import annotations
-
 import logging
 from datetime import datetime, timezone
 from pathlib import Path

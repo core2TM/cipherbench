@@ -12,9 +12,6 @@ Per the design: the system prompt must contain only rules and format instruction
 It must NOT contain 'example', 'strategy', 'hint', 'tip', 'suggest', or any
 demonstration of how to solve the cipher.
 """
-from __future__ import annotations
-
-
 def build_system_prompt(
     alphabet: str,
     output_length: int,

@@ -7,8 +7,6 @@ This module contains two public names:
 Session fields use `level` (1|2|3) instead of seed/difficulty/puzzle_hash
 since puzzles are now deterministic with no RNG.
 """
-from __future__ import annotations
-
 from typing import List, Literal, Optional, TypedDict
 
 
@@ -32,9 +30,6 @@ class AttemptEntry(TypedDict):
         Maximum possible score (equals output_length, e.g. 5).
     is_correct : bool
         True iff score == max_score. False for extraction failures.
-    chars_present : Optional[int]
-        Number of chars in encode(probe) that appear anywhere in ground_truth.
-        None if not computed.
     raw_response : Optional[str]
         The full raw text from the model (model sessions only). None for human sessions.
     extraction_failed : bool

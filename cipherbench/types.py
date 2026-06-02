@@ -50,9 +50,6 @@ class AttemptScore:
         Maximum possible score (equals output_length, e.g. 5).
     is_correct : bool
         True iff score == max_score (exact match).
-    chars_present : Optional[int]
-        Number of chars in encode(probe) that appear anywhere in ground_truth
-        (multiset intersection). None if not computed.
     encoded_output : Optional[str]
         The cipher-encoded form of the submitted probe. Always included so the
         player can see what their probe encodes to.

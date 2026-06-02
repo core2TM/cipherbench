@@ -18,8 +18,6 @@ Information boundary:
   ground_truth is private. The encoded probe is returned to the caller as
   encoded_output so the player can observe the cipher behaviour.
 """
-from __future__ import annotations
-
 from cipherbench.types import AttemptScore
 from cipherbench.engine.layers import apply_cipher, count_correct
 
@@ -58,7 +56,7 @@ class RuleEngine:
         1. Validates guess length and alphabet membership.
         2. Encodes the guess through the fixed cipher.
         3. Counts positions where encode(guess)[i] == ground_truth[i].
-        4. Returns AttemptScore with score, is_correct, chars_present, encoded_output.
+        4. Returns AttemptScore with score, is_correct, encoded_output.
 
         The encoded_output is always included so the player can observe the
         cipher mapping for each probe.
@@ -72,7 +70,7 @@ class RuleEngine:
         Returns
         -------
         AttemptScore
-            Aggregate correctness count, encoded output, and chars_present.
+            Aggregate correctness count and encoded output.
 
         Raises
         ------

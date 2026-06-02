@@ -9,8 +9,6 @@ Design decisions:
   D-11  Rich Table columns: Difficulty | Sessions | Success Rate | Avg Efficiency | AGI Proximity
   D-03  Live summary: one typer.echo line only — no Rich components
 """
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import typer

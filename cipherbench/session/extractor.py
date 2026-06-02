@@ -11,8 +11,6 @@ Security note (T-03-02-03 mitigation):
   quantifiers (.+ or .*).  This prevents ReDoS attacks when processing adversarial
   model output.  Empty alphabet raises ValueError before any regex is constructed.
 """
-from __future__ import annotations
-
 import re
 
 MAX_ATTEMPTS: int = 15

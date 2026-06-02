@@ -17,8 +17,6 @@ Design decisions implemented here:
   D-09  Missing sessions_dir: prints descriptive error and exits 1
   D-10  Empty sessions_dir: prints descriptive error and exits 1
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

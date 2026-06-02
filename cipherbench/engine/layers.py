@@ -15,8 +15,6 @@ Scoring:
   whose encoding matches it position by position.
 """
 
-from __future__ import annotations
-
 # Atbash: SUBSTITUTION[i] = 25 - i  (A↔Z, B↔Y, ..., Z↔A)
 ATBASH: list[int] = [25 - i for i in range(26)]
 
@@ -81,31 +79,3 @@ def count_correct(encoded_probe: str, ground_truth: str) -> int:
     return sum(e == g for e, g in zip(encoded_probe, ground_truth))
 
 
-def count_chars_present(encoded_probe: str, ground_truth: str) -> int:
-    """Count characters in encoded_probe that appear anywhere in ground_truth (multiset intersection).
-
-    Position-independent: a character counts if it appears in the ground truth
-    regardless of where it sits. The count is capped by how many times the
-    character appears in the ground truth (multiset semantics).
-
-    Parameters
-    ----------
-    encoded_probe : str
-        The cipher-encoded form of the player's probe.
-    ground_truth : str
-        The level's fixed target string.
-
-    Returns
-    -------
-    int
-        Number of characters in encoded_probe that appear in ground_truth
-        under multiset intersection semantics (0..len(encoded_probe)).
-    """
-    if len(encoded_probe) != len(ground_truth):
-        raise ValueError(
-            f"encoded_probe length {len(encoded_probe)} != ground_truth length {len(ground_truth)}"
-        )
-    total = 0
-    for c in set(encoded_probe):
-        total += min(encoded_probe.count(c), ground_truth.count(c))
-    return total

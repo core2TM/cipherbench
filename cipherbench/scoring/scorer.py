@@ -16,8 +16,6 @@ Design decisions implemented here:
   D-09  AGI proximity = model_avg / human_avg; None when no human sessions or human_avg=0
   D-10  Empty or non-existent sessions directory: return [] (no error)
 """
-from __future__ import annotations
-
 import json
 import logging
 from datetime import datetime, timezone
