@@ -171,6 +171,7 @@ class HumanSessionRunner:
                 "is_correct": attempt_score.is_correct,
                 "raw_response": None,
                 "extraction_failed": False,
+                "reason": None,
             }
             self._session_record["attempts"].append(entry)
             self._writer.write_checkpoint(self._session_record)
@@ -264,6 +265,7 @@ def create_human_session(
         "ground_truth": ground_truth,
         "outcome": "in_progress",
         "final_answer": None,
+        "final_answer_reason": None,
         "attempts": [],
         "created_at": now_iso,
         "completed_at": None,

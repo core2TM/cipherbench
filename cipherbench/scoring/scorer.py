@@ -1,13 +1,16 @@
 """CipherBench scoring — pure computation: session loading, filtering, and score formulas.
 
 Public names:
-  load_sessions       — glob sessions dir, filter to terminal sessions matching criteria
-  efficiency_score    — SCORE-02: per-session efficiency formula
-  success_rate        — SCORE-01: fraction of successful sessions
-  group_by_difficulty — SCORE-04: bucket sessions by difficulty tier
-  agi_proximity       — SCORE-03: model_avg_efficiency / human_avg_efficiency; None if no baseline
-  compute_report      — aggregate all metrics into a ScoreReport dict
-  ScoreReport         — TypedDict for the complete scoring result
+  load_sessions         — glob sessions dir, filter to terminal sessions matching criteria
+  efficiency_score      — SCORE-02: per-session efficiency formula
+  success_rate          — SCORE-01: fraction of successful sessions
+  group_by_difficulty   — SCORE-04: bucket sessions by difficulty tier
+  agi_proximity         — SCORE-03: model_avg_efficiency / human_avg_efficiency; None if no baseline
+  known_info            — SCORE-05: avg probe score ratio across all valid probes (0–1)
+  probe_efficiency      — SCORE-06: probes_used / known_info; lower = found info faster
+  solution_probability  — SCORE-07: success_rate / avg_known_info across sessions
+  compute_report        — aggregate all metrics into a ScoreReport dict
+  ScoreReport           — TypedDict for the complete scoring result
 
 Design decisions implemented here:
   D-04  Session set = terminal sessions (outcome in {'success','failure'}) only
@@ -29,12 +32,15 @@ TERMINAL_OUTCOMES: frozenset[str] = frozenset({"success", "failure"})
 
 
 class TierStats(TypedDict):
-    """Per-difficulty-tier aggregated statistics (SCORE-04)."""
+    """Per-difficulty-tier aggregated statistics (SCORE-04 through SCORE-07)."""
 
     sessions: int
     success_rate: float
     avg_efficiency: float
-    agi_proximity: Optional[float]  # None renders as null in JSON, "N/A" in terminal
+    agi_proximity: Optional[float]          # None renders as null in JSON, "N/A" in terminal
+    avg_probe_efficiency: Optional[float]   # None when all sessions had zero known_info
+    avg_known_info: float                   # average unique chars probed (0–26)
+    solution_probability: dict[int, float]  # known_info_count → success_rate (x→y)
 
 
 class ScoreReport(TypedDict):
@@ -173,6 +179,47 @@ def agi_proximity(
     return model_avg / human_avg
 
 
+def known_info(session: dict) -> int:
+    """SCORE-05: number of unique alphabet characters whose cipher mapping was observed.
+
+    Each unique character used in any probe reveals its encoding. Repeated use of
+    the same character across multiple probes adds no new information.
+    Returns an integer in 0–26.
+    """
+    seen: set[str] = set()
+    for a in session.get("attempts", []):
+        if not a.get("extraction_failed", False) and a.get("probe"):
+            seen.update(a["probe"])
+    return len(seen)
+
+
+def probe_efficiency(session: dict) -> float | None:
+    """SCORE-06: probes_used / known_info. Probes spent per character learned; lower is better.
+
+    Returns None when known_info == 0 (no valid probes submitted).
+    """
+    ki = known_info(session)
+    if ki == 0:
+        return None
+    attempts_used = sum(
+        1 for a in session.get("attempts", []) if not a.get("extraction_failed", False)
+    )
+    return attempts_used / ki
+
+
+def solution_probability(sessions: list[dict]) -> dict[int, float]:
+    """SCORE-07: success rate at each observed known_info level (x=chars_known, y=success_rate).
+
+    Groups sessions by their final known_info count and computes the success rate
+    per group. Returns a dict mapping known_info count → success rate, sorted by key.
+    Empty dict when sessions is empty.
+    """
+    groups: dict[int, list[dict]] = {}
+    for s in sessions:
+        groups.setdefault(known_info(s), []).append(s)
+    return {k: success_rate(v) for k, v in sorted(groups.items())}
+
+
 def compute_report(
     model_sessions: list[dict],
     human_sessions: list[dict],
@@ -197,27 +244,43 @@ def compute_report(
         tier_human = human_by_tier.get(tier, [])
         avg_eff = (
             sum(efficiency_score(s) for s in tier_sessions) / len(tier_sessions)
-            if tier_sessions
-            else 0.0
+            if tier_sessions else 0.0
+        )
+        pe_values = [v for s in tier_sessions if (v := probe_efficiency(s)) is not None]
+        avg_pe = sum(pe_values) / len(pe_values) if pe_values else None
+        avg_ki = (
+            sum(known_info(s) for s in tier_sessions) / len(tier_sessions)
+            if tier_sessions else 0.0
         )
         by_difficulty[tier] = TierStats(
             sessions=len(tier_sessions),
             success_rate=success_rate(tier_sessions),
             avg_efficiency=avg_eff,
             agi_proximity=agi_proximity(tier_sessions, tier_human),
+            avg_probe_efficiency=avg_pe,
+            avg_known_info=avg_ki,
+            solution_probability=solution_probability(tier_sessions),
         )
 
     # Totals across all model sessions
     total_avg_eff = (
         sum(efficiency_score(s) for s in model_sessions) / len(model_sessions)
-        if model_sessions
-        else 0.0
+        if model_sessions else 0.0
+    )
+    total_pe_values = [v for s in model_sessions if (v := probe_efficiency(s)) is not None]
+    total_avg_pe = sum(total_pe_values) / len(total_pe_values) if total_pe_values else None
+    total_avg_ki = (
+        sum(known_info(s) for s in model_sessions) / len(model_sessions)
+        if model_sessions else 0.0
     )
     totals: TierStats = TierStats(
         sessions=len(model_sessions),
         success_rate=success_rate(model_sessions),
         avg_efficiency=total_avg_eff,
         agi_proximity=agi_proximity(model_sessions, human_sessions),
+        avg_probe_efficiency=total_avg_pe,
+        avg_known_info=total_avg_ki,
+        solution_probability=solution_probability(model_sessions),
     )
 
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

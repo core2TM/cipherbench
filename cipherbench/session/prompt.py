@@ -57,9 +57,11 @@ def build_system_prompt(
         f"- No information about which positions are correct is given — only the total counts.\n"
         f"- After all {max_attempts} probes, submit your final answer.\n\n"
         f"Format:\n"
-        f"- Each probe must be submitted exactly as: PROBE: {'#' * output_length}\n"
+        f"- Before each probe, explain your reasoning on one line: REASON: <your reasoning>\n"
+        f"- Then submit the probe on the next line: PROBE: {'#' * output_length}\n"
         f"  where each # is replaced by a character from the alphabet.\n"
-        f"- Your final answer must be submitted exactly as: ANSWER: {'#' * output_length}\n"
+        f"- Before your final answer, explain your reasoning: REASON: <your reasoning>\n"
+        f"- Then submit the answer: ANSWER: {'#' * output_length}\n"
         f"  where each # is replaced by a character from the alphabet.\n"
     )
 
@@ -86,7 +88,7 @@ def build_user_turn(attempt_num: int, attempts: list[dict], max_score: int) -> s
         User turn string with attempt history table and probe request.
     """
     if not attempts:
-        return f"Please submit your first probe (PROBE: {'#' * max_score})."
+        return f"Please explain your reasoning (REASON: ...) then submit your first probe (PROBE: {'#' * max_score})."
 
     lines = ["Attempt history:", ""]
     lines.append(f"{'#':<6}{'Probe':<10}{'Encoded':<10}{'Score':<10}")
@@ -101,6 +103,6 @@ def build_user_turn(attempt_num: int, attempts: list[dict], max_score: int) -> s
         )
 
     lines.append("")
-    lines.append(f"Please submit probe number {attempt_num} (PROBE: {'#' * max_score}).")
+    lines.append(f"Please explain your reasoning (REASON: ...) then submit probe number {attempt_num} (PROBE: {'#' * max_score}).")
 
     return "\n".join(lines)

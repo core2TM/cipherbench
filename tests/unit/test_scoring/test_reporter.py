@@ -53,23 +53,20 @@ def _make_session(outcome: str, attempts_used: int, extraction_failures: int = 0
 
 def _make_report(agi_proximity_value=None):
     """Build a minimal ScoreReport for testing."""
+    tier_stats = {
+        "sessions": 3,
+        "success_rate": 0.67,
+        "avg_efficiency": 0.6,
+        "agi_proximity": agi_proximity_value,
+        "avg_probe_efficiency": None,
+        "avg_known_info": 10.0,
+        "solution_probability": {10: 0.67},
+    }
     return {
         "model": "test/model",
         "sessions_scored": 3,
-        "by_difficulty": {
-            "easy": {
-                "sessions": 3,
-                "success_rate": 0.67,
-                "avg_efficiency": 0.6,
-                "agi_proximity": agi_proximity_value,
-            }
-        },
-        "totals": {
-            "sessions": 3,
-            "success_rate": 0.67,
-            "avg_efficiency": 0.6,
-            "agi_proximity": agi_proximity_value,
-        },
+        "by_difficulty": {"easy": dict(tier_stats)},
+        "totals": dict(tier_stats),
         "generated_at": "2026-05-29T00:00:00Z",
     }
 

@@ -24,7 +24,7 @@ from cipherbench.puzzle import (
     get_ground_truth,
     get_max_attempts,
 )
-from cipherbench.session.extractor import extract_probe, extract_answer
+from cipherbench.session.extractor import extract_probe, extract_answer, extract_reason
 from cipherbench.session.prompt import build_system_prompt, build_user_turn
 from cipherbench.session.writer import SessionWriter, slugify_model, make_session_id
 
@@ -113,6 +113,7 @@ class ModelSessionRunner:
                     "is_correct": False,
                     "raw_response": raw,
                     "extraction_failed": True,
+                    "reason": extract_reason(raw),
                 }
                 self._session_record["attempts"].append(entry)
                 self._writer.write_checkpoint(self._session_record)
@@ -128,6 +129,7 @@ class ModelSessionRunner:
                 "is_correct": attempt_score.is_correct,
                 "raw_response": raw,
                 "extraction_failed": False,
+                "reason": extract_reason(raw),
             }
             self._session_record["attempts"].append(entry)
             self._writer.write_checkpoint(self._session_record)
@@ -148,6 +150,7 @@ class ModelSessionRunner:
                     messages + [{"role": "user", "content": final_prompt}]
                 )
                 final_answer = extract_answer(raw_ans, alphabet, output_length)
+                self._session_record["final_answer_reason"] = extract_reason(raw_ans)
             except litellm.RateLimitError:
                 self._writer.finalize(self._session_record, "rate_limited")
                 return self._session_record
@@ -228,6 +231,7 @@ def create_model_session(
         "ground_truth": ground_truth,
         "outcome": "in_progress",
         "final_answer": None,
+        "final_answer_reason": None,
         "attempts": [],
         "created_at": now_iso,
         "completed_at": None,

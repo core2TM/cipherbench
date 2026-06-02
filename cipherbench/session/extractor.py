@@ -22,6 +22,18 @@ models that never produce a valid PROBE: response.
 """
 
 
+def extract_reason(text: str) -> str | None:
+    """Extract the REASON: line from a model response.
+
+    Captures text from REASON: up to the next PROBE: or ANSWER: tag, or end of string.
+    Returns the stripped reason string, or None if no REASON: tag found.
+    """
+    match = re.search(r"REASON:\s*(.+?)(?=\s*(?:PROBE:|ANSWER:)|$)", text, re.DOTALL)
+    if match:
+        return match.group(1).strip() or None
+    return None
+
+
 def extract_probe(text: str, alphabet: str, output_length: int = 5) -> str | None:
     """Extract a probe string from a model's freeform response (ADAPT-04, D-01, D-05).
 

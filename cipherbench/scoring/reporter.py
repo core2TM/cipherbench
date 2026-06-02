@@ -6,7 +6,8 @@ Public names:
 
 Design decisions:
   D-11  Rich Panel header: model name + session count
-  D-11  Rich Table columns: Difficulty | Sessions | Success Rate | Avg Efficiency | AGI Proximity
+  D-11  Rich Table columns: Difficulty | Sessions | Success Rate | Avg Efficiency | AGI Proximity | Probe Efficiency | Avg Known Info
+  D-11  Solution probability shown as separate breakdown table (known_info → success rate)
   D-03  Live summary: one typer.echo line only — no Rich components
 """
 from typing import TYPE_CHECKING
@@ -47,11 +48,18 @@ def render_score_report(report: "ScoreReport", model: str) -> None:
     table.add_column("Success Rate", justify="right", min_width=12)
     table.add_column("Avg Efficiency", justify="right", min_width=14)
     table.add_column("AGI Proximity", justify="right", min_width=13)
+    table.add_column("Probe Efficiency", justify="right", min_width=16)
+    table.add_column("Avg Known Info", justify="right", min_width=14)
 
     for tier, stats in report["by_difficulty"].items():
         proximity_str = (
             f"{stats['agi_proximity']:.2f}x"
             if stats["agi_proximity"] is not None
+            else "N/A"
+        )
+        pe_str = (
+            f"{stats['avg_probe_efficiency']:.2f}"
+            if stats["avg_probe_efficiency"] is not None
             else "N/A"
         )
         table.add_row(
@@ -60,6 +68,8 @@ def render_score_report(report: "ScoreReport", model: str) -> None:
             f"{stats['success_rate']:.0%}",
             f"{stats['avg_efficiency']:.2f}",
             proximity_str,
+            pe_str,
+            f"{stats['avg_known_info']:.1f}/26",
         )
 
     # Totals row — bold to distinguish
@@ -69,14 +79,36 @@ def render_score_report(report: "ScoreReport", model: str) -> None:
         if totals["agi_proximity"] is not None
         else "N/A"
     )
+    total_pe_str = (
+        f"{totals['avg_probe_efficiency']:.2f}"
+        if totals["avg_probe_efficiency"] is not None
+        else "N/A"
+    )
     table.add_row(
         "[bold]TOTAL[/bold]",
         f"[bold]{totals['sessions']}[/bold]",
         f"[bold]{totals['success_rate']:.0%}[/bold]",
         f"[bold]{totals['avg_efficiency']:.2f}[/bold]",
         f"[bold]{proximity_str}[/bold]",
+        f"[bold]{total_pe_str}[/bold]",
+        f"[bold]{totals['avg_known_info']:.1f}/26[/bold]",
     )
     _console.print(table)
+
+    # Solution probability breakdown — success rate per known_info level (x → y)
+    sp = totals["solution_probability"]
+    if sp:
+        sp_table = Table(
+            title="Solution Probability  (chars known → success rate)",
+            show_header=True,
+            header_style="bold",
+        )
+        sp_table.add_column("Chars Known (x)", justify="center", min_width=15)
+        sp_table.add_column("Success Rate (y)", justify="center", min_width=16)
+        for ki, sr in sp.items():
+            style = "green" if sr >= 0.5 else ("yellow" if sr > 0 else "red")
+            sp_table.add_row(str(ki), f"[{style}]{sr:.0%}[/{style}]")
+        _console.print(sp_table)
 
     # D-10 hint when no baseline available
     if totals["agi_proximity"] is None:

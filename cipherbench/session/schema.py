@@ -35,6 +35,8 @@ class AttemptEntry(TypedDict):
     extraction_failed : bool
         True if the model response did not yield a valid probe string.
         Extraction failures do NOT consume an attempt count.
+    reason : Optional[str]
+        The model's stated reasoning for this probe (model sessions only). None for human sessions.
     """
 
     attempt_num: int
@@ -45,6 +47,7 @@ class AttemptEntry(TypedDict):
     is_correct: bool
     raw_response: Optional[str]
     extraction_failed: bool
+    reason: Optional[str]
 
 
 class SessionRecord(TypedDict):
@@ -68,6 +71,8 @@ class SessionRecord(TypedDict):
         Terminal state of the session.
     final_answer : Optional[str]
         The model's or human's final ANSWER: submission.
+    final_answer_reason : Optional[str]
+        The model's stated reasoning for its final answer (model sessions only).
     attempts : List[AttemptEntry]
         All probe attempts, including extraction failures.
     created_at : str
@@ -84,6 +89,7 @@ class SessionRecord(TypedDict):
     ground_truth: str
     outcome: Literal["success", "failure", "rate_limited", "in_progress"]
     final_answer: Optional[str]
+    final_answer_reason: Optional[str]
     attempts: List[AttemptEntry]
     created_at: str
     completed_at: Optional[str]

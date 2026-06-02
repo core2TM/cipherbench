@@ -143,16 +143,32 @@ def score_command(
     level: Annotated[Optional[int], typer.Option("--level", help="Filter by puzzle level (1, 2, or 3)")] = None,
     output_file: Annotated[Optional[str], typer.Option("--output-file", help="Write JSON report to this path")] = None,
     human: Annotated[bool, typer.Option("--human/--no-human", help="Score human sessions instead of model sessions")] = False,
+    all_runners: Annotated[bool, typer.Option("--all", help="Show human and all model sessions side by side")] = False,
 ) -> None:
     """Compute scoring report for a model or human player."""
     from cipherbench.scoring.scorer import load_sessions, compute_report
     from cipherbench.scoring.reporter import render_score_report
     from cipherbench.scoring.report_writer import write_json_report
 
-    runner_type = "human" if human else "model"
     sessions_path = Path(sessions_dir).resolve()
     level_filter = str(level) if level is not None else None
 
+    if all_runners:
+        human_sessions = load_sessions(sessions_path, runner_type="human", difficulty=level_filter)
+        model_sessions = load_sessions(sessions_path, runner_type="model", model=model, difficulty=level_filter)
+        if not human_sessions and not model_sessions:
+            typer.echo("No terminal sessions found.", err=True)
+            raise typer.Exit(code=1)
+        if human_sessions:
+            report = compute_report(human_sessions, [], model_str=None)
+            render_score_report(report, model="human")
+        if model_sessions:
+            label = model if model is not None else "(all models)"
+            report = compute_report(model_sessions, human_sessions, model_str=model)
+            render_score_report(report, model=label)
+        return
+
+    runner_type = "human" if human else "model"
     model_sessions = load_sessions(sessions_path, runner_type=runner_type, model=model, difficulty=level_filter)
     human_sessions = load_sessions(sessions_path, runner_type="human", difficulty=level_filter) if not human else []
 
